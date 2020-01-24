@@ -50,18 +50,15 @@ class Test(unittest.TestCase):
             credentials = json.loads('{"username" : "user", "password" : "xxx", "url" : "xxx", "instance_id" : "xxx"}')
         return credentials
 
+
     def _create_stream(self, topo):
+        """Create a stream of dicts, each having K/V for iris detection"""
         s = topo.source([{"sepal_length" : 5.1 , "sepal_width" : 3.5 , "petal_length" : 1.4, "petal_width" : 0.2} for i in range (10000)])
-        #schema=StreamSchema('tuple<int32 id, rstring name>').as_tuple()
-        #return s.map(lambda x : (x,'X'+str(x*2)), schema=schema)
         return s
 
     def test_score_bundle(self):
         print ('\n---------'+str(self))
-        name = 'test_score_bundle'
-        topo = Topology(name)
-        s = self._create_stream(topo) # stream with two attributes id, name
-        #out_schema = StreamSchema('tuple<blob result_blob>')
+
         test_field_mapping =[{"model_field":"Sepal.Length",
                             "is_mandatory":True,
                             "tuple_field":"sepal_length"},
@@ -78,12 +75,20 @@ class Test(unittest.TestCase):
         #so just transform to already here and use JSON string as parameter                    
         field_mapping = json.dumps(test_field_mapping)
 
-        res = wml.wml_online_scoring(s,
+        name = 'test_score_bundle'
+        topo = Topology(name)
+        s = self._create_stream(topo) 
+        # stream of dicts is consumed by wml_online_scoring
+        scorings,invalids = wml.wml_online_scoring(s,
                                      'c764e524-0876-4e03-a6da-5f3bbc5e5482', #deployment_guid
                                      field_mapping, 
                                      cloud_creds_env_var(), #wml_credentials,
                                      '1fb6550c-b22a-4a90-93fc-458ec048662e',
                                      expected_load = 10)
+
+        scorings.publish(topic="ScoredRecords")
+        invalids.publish(topic="InvalidRecords")
+
         #res.print()
         if (("TestDistributed" in str(self)) or ("TestStreamingAnalytics" in str(self))):
             self._launch(topo)
@@ -96,7 +101,7 @@ class TestDistributed(Test):
         # setup test config
         self.test_config = {}
         self.test_config[ConfigParams.SSL_VERIFY] = False  
-        job_config = streamsx.topology.context.JobConfig(tracing='info')
+        job_config = streamsx.topology.context.JobConfig(tracing='trace')
         job_config.add(self.test_config)
 
     def _launch(self, topo):

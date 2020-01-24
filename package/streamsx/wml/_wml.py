@@ -47,8 +47,11 @@ def wml_online_scoring( stream,
     topology = stream.topology
     _add_toolkit(topology)
 
+    #map from input to json
+    #mapped_input = stream.map(lambda t: json.dumps(t), schema=StreamSchema("tuple<rstring json_dict>").as_dict())
+
     _op = _WMLOnlineScoring(stream = stream, 
-                            schemas = [StreamSchema('tuple<blob python_dict>'),StreamSchema('tuple<blob python_dict>')],
+                            schemas = [StreamSchema('tuple<blob __spl_po>'),StreamSchema('tuple<blob __spl_po>')],
                             deployment_guid = deployment_guid, 
                             #mapping_function = mapping_function,
                             field_mapping = field_mapping,

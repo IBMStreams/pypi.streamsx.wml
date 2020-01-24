@@ -27,35 +27,20 @@ from watson_machine_learning_client import WatsonMachineLearningAPIClient
 import copy
 import queue
 import threading
-
-
-
+import pickle
 
 
 
 #define tracer and logger
 #logger for error which should and can! be handled by an administrator
 #tracer for all other events that are of interest for developer
-#def config_logging():
-#    format = '%(asctime)s %(name)-18s [%(levelname)s] %(message)s'
-#    logging.basicConfig(format=format, level=logging.DEBUG)
-#
-#config_logging()
 tracer = logging.getLogger(__name__)
-#logger = tracer
-logger = logging.getLogger("com.ibm.streams.log")
+mylogger = logging.getLogger("com.ibm.streams.log")
 
-#modelGUID and modelName are optional parmaters, need to define a default 
-#DEFAULT_MODEL_GUID = None
-#DEFAULT_MODEL_NAME = None
 
 # Defines the SPL namespace for any functions in this module
 def spl_namespace():
     return "com.ibm.streams.wml"
-
-
-
-
 
 @spl.primitive_operator(output_ports=['result_port','error_port'])
 class WMLOnlineScoring(spl.PrimitiveOperator):
@@ -82,6 +67,7 @@ class WMLOnlineScoring(spl.PrimitiveOperator):
         It creates the threads which handle the requests towards the scoring deployment.
         These threads will consume tuples in the input queue, which is filled by the __call__ member.
         """
+        tracer.debug("__init__ called")
         self._deployment_guid = deployment_guid
         #self._mapping_function = mapping_function
         self._field_mapping = json.loads(field_mapping)
@@ -95,28 +81,37 @@ class WMLOnlineScoring(spl.PrimitiveOperator):
         self._input_queue = list([])
         self._sending_threads = []
         self._lock = threading.Lock()
+        tracer.debug("__init__ finished")
         return
 
     def __enter__(self):
+        tracer.debug("__enter__ called")
         self._create_sending_threads()
         self._start_sending_threads()
         self._wml_client = self._create_wml_client()
+        tracer.debug("__enter__ finished")
 
-    #def __call__(self, input_tuple):
+
     @spl.input_port()
-    def __call__(self, *python_tuple):
+    def score_call(self, **python_tuple):
         """It is called for every tuple of the input stream 
         The tuple will be just stored in the input queue. On max queue size processing
         stops and backpressure on the up-stream happens.
         """
+        # Input is a single value python tuple. This value is the pickeled original tuple
+        # from topology.
+        # So we need to load it back in an object with pickle.load(<class byte>) from memoryview
+        # we receive here as the pickled python object is put in a SPL tuple <blob __spl_po> and
+        # SPL type blob is on Python side a memoryview object
         # python tuple is choosen as input type, which has tuple values in sequence of SPL tuple
         # we have control over this SPL tuple and define it to have single attribute being a blob 
         # the blob is filled from topology side with a python dict as we want to work on a dict
         # as most comfortable also when having no defined attribute sequence anymore
-        input_tuple = python_tuple
+        input_tuple = pickle.loads(python_tuple['__spl_po'].tobytes())
 
         # allow backpressure, block calling thread here until input_tuple can be stored 
         while(len(self._input_queue) >=  self._max_queue_size):
+            #todo check thread status
             time.sleep(1)
         with self._lock:
             #'Append' itself would not need a lock as from Python interpreter side it is
@@ -124,20 +119,20 @@ class WMLOnlineScoring(spl.PrimitiveOperator):
             #But use lock here for the case of later added additional
             #code which has to be executed together with 'append'
             self._input_queue.append(input_tuple)
-        return
 
-    def __exit__(self):
+
+    def __exit__(self, exc_type, exc_value, traceback):
         self._end_sending_threads()
     
     
-    
-    
     def _rest_handler(self, thread_index):
-        print("Thread ", self._sending_threads[thread_index], " started")
+        tracer.debug("Thread %d started.", thread_index )
+        mylogger.error("Thread %d started.", thread_index )
         local_list = []
-        record_counter = 0
+        tuple_counter = 0
         #as long as thread shall not stop
         while self._sending_threads[thread_index]['run']:
+            print("Thread ",thread_index, " start loop")
             #copy chunk of input tuples to threads own list and delete from global
             #our sending threads don't really need to run in parallel but in sequence so
             #we may lock for longer time here
@@ -148,13 +143,14 @@ class WMLOnlineScoring(spl.PrimitiveOperator):
             with self._lock:
                 #determine size and copy max size or all to local list
                 size = len(self._input_queue)
+                print("Thread: Size in queue ", size)
                 if size > 0:
                     end_index = int(self._max_request_size) if size >= self._max_request_size else size
                     local_list = self._input_queue[:end_index]
                     del self._input_queue[:end_index]
-                    record_counter = record_counter + end_index 
-                    #payload, invalid_tuples = self._mapping_function(local_list)
-                    logger.info("WMLOnlineScoring: Thread {0} read {1} tuples from input queue!", thread_index, size)
+                    tuple_counter = tuple_counter + end_index 
+                    #tracer.debug("WMLOnlineScoring: Thread %d read %d tuples from input queue!", thread_index, size)
+                    print("WMLOnlineScoring: Thread {0} read {1} tuples from input queue!", thread_index, end_index)
             
             #do the rest not in lock
             if size > 0: 
@@ -162,7 +158,8 @@ class WMLOnlineScoring(spl.PrimitiveOperator):
                 payload, invalid_tuples = self._mapping_function(self._field_mapping,local_list)
                 #send request
                 try:
-                    predictions=self._wml_client.deployments.score(self._deployment_guid,meta_props={'input_data':payload})
+                    if len(payload) > 0:
+                        predictions=self._wml_client.deployments.score(self._deployment_guid,meta_props={'input_data':payload})
                 except wml_client_error.ApiRequestFailure as err:
                     """REST request returns 
                     400 incase something with the value of 'input_data' is not correct
@@ -177,6 +174,7 @@ class WMLOnlineScoring(spl.PrimitiveOperator):
                     error output port
                     """
                     print("WML API error description: ",err.args[0])
+                    mylogger.error("WMLOnlineScoring: WML API error: ",err.args[0])
                     #print("WML REST response headers: ",err.args[1].headers)
                     #print("WML REST response statuscode: ",err.args[1].status_code)
                     #print("WML REST response code: ",err.args[1].json()["errors"][0]["code"])
@@ -184,14 +182,22 @@ class WMLOnlineScoring(spl.PrimitiveOperator):
                     #add the complete local tuple list to invalid list
                     #TODO one may think about adding an error indicator if tuple is rejected from mapping function
                     #or from scoring as part of a scoring bundle
-                    invalid_tuples += local_list
+                    #because the predictioon for whole bundle failed, the complete local_list is invalid
+                    #invalid_tuples += local_list
+                    invalid_tuples = local_list
+                    local_list = []
                 except:
                     print ("Not expected exception", sys.exc_info()[0])
-                    invalid_tuples += local_list
+                    mylogger.critical("WMLOnlineScoring: Unexpected error: %s",err.args[0])
+                    #because the predictioon for whole bundle failed, the complete local_list is invalid
+                    #invalid_tuples += local_list
+                    invalid_tuples = local_list
+                    local_list = []
 
-                    logger.info("WMLOnlineScoring: Thread {0} got {1} predictions from WML model deployment!", thread_index, len(predictions))
+                #logger.info("WMLOnlineScoring: Thread %d got %d predictions from WML model deployment!", thread_index, len(predictions[0]['values']))
+                print("WMLOnlineScoring: Thread {0} got {1} predictions from WML model deployment!".format(thread_index, len(predictions['predictions'][0]['values'])))
                  
-                for prediction in predictions:
+                for prediction in predictions['predictions']:
                     #take the tuples from local list in sequence, sequence is same as the 
                     #sequence of prediction 'values' as input was generated in sequence of the local_list
                     #there is no reference from input to prediction except the position in sequence
@@ -204,17 +210,23 @@ class WMLOnlineScoring(spl.PrimitiveOperator):
                     #field so new {'fields''values'} object with appropriate field names is generated as input
 
                     #submit tuple list
-                    self.submit('result_port',predictions)
+                    
+                    predictions_fields =  prediction['fields']
+                    for values in prediction['values']:
+                        prediction_dict = dict(zip(prediction['fields'],values))
+                        self.submit('result_port',{'__spl_po':memoryview(pickle.dumps(prediction_dict)) })
 
                 for _tuple in invalid_tuples:
                     #submit invalid tuples
-                    self.submit('error_port',invalid_tuples)
+                    print ("WMLOnlineScoring: Thread Submit {0} invalid tuples",len(invalid_tuples))
+                    #self.submit('error_port',invalid_tuples)
             else:
                 #todo choose different approach to get threads waiting for input
                 #may be queue with blocking read but queue we can't use to use subslicing and slice-deleting
                 time.sleep(0.5)
                 
-        logger("Thread ", thread_index, " stopped after ", record_counter, " records")
+        mylogger.info("WMLOnlineScoring: Thread %d stopped after %d records", thread_index,record_counter )
+        print("WMLOnlineScoring: Thread {0} stopped after {1} records".format(thread_index,record_counter) )
     
     
     def _create_wml_client(self):
@@ -255,7 +267,7 @@ class WMLOnlineScoring(spl.PrimitiveOperator):
             thread_control['thread'].join()
             print("Thread ", thread_control['index']," joined")
 
-    def _mapping_function(model_field_mapping,tuple_list):
+    def _mapping_function(self,model_field_mapping,tuple_list):
         """Private function, special for my model and my input data
         I have to know the fields the model requires and which I have to fill
         as well as the schema of my input data.
@@ -353,7 +365,7 @@ class WMLOnlineScoring(spl.PrimitiveOperator):
 
 
         # 1. check if input is a JSON string
-        logger.info("Check if parameter connectionConfiguration is a JSON string")
+        tracer.info("Check if parameter connectionConfiguration is a JSON string")
         try: 
             config_dict = json.loads(connection_config)
         except:
@@ -361,7 +373,7 @@ class WMLOnlineScoring(spl.PrimitiveOperator):
            
         # valid JSON!
         if config_dict:
-            logger.info("Parameter connectionConfiguration is a JSON string, check content")
+            tracer.info("Parameter connectionConfiguration is a JSON string, check content")
             if all (k in config_dict for k in wml_keys):
                 #check that all have values
                 if all (config_dict[k]!=None for k in wml_keys):
@@ -369,25 +381,25 @@ class WMLOnlineScoring(spl.PrimitiveOperator):
                     
         # no valid JSON,  possibly applicationConfiguration?
         else:
-            logger.info("parameter connectionConfiguration is no JSON string, check if it is AppConfig name")
+            tracer.info("parameter connectionConfiguration is no JSON string, check if it is AppConfig name")
             config_dict=get_application_configuration(connection_config)
             
             if config_dict:
                 # 2.1 check all single properties provided
-                logger.info("Try to read separate credential parameters from AppConfig")
+                tracer.info("Try to read separate credential parameters from AppConfig")
                 if all (k in config_dict for k in wml_keys):
                     #check that all have values
                     if all (config_dict[k]!=None for k in wml_keys):
                         return {k:config_dict[k] for k in wml_keys}
                         
                 # 2.2 check on jsonCredentials property
-                logger.info("Try to read single jsonCredentials parameter from AppConfig")
+                tracer.info("Try to read single jsonCredentials parameter from AppConfig")
                 if wml_json_key in config_dict:
                     json_config = None
                     try: 
                         json_config = json.loads(config_dict[wml_json_key])
                     except:
-                        logger.info("Could not load jsonCredentials from AppConfig")
+                        tracer.info("Could not load jsonCredentials from AppConfig")
                         json_config = None
                     if json_config:
                         if all (k in json_config for k in wml_keys):
@@ -395,7 +407,7 @@ class WMLOnlineScoring(spl.PrimitiveOperator):
                             if all (json_config[k]!=None for k in wml_keys):
                                 return {k:json_config[k] for k in wml_keys}            
                                 
-        logger.error("WMLModelFeed: Could not get valid WML connection config from: " + config_name + ".")
+        tracer.error("WMLModelFeed: Could not get valid WML connection config from: " + config_name + ".")
         return None
 
 
