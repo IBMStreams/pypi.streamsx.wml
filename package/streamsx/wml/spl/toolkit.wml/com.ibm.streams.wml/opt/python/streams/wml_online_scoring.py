@@ -22,8 +22,6 @@ from watson_machine_learning_client import WatsonMachineLearningAPIClient
 from watson_machine_learning_client.wml_client_error import ApiRequestFailure
 from requests.exceptions import MissingSchema
 
-
-from watson_machine_learning_client import WatsonMachineLearningAPIClient
 import copy
 import queue
 import threading
@@ -35,7 +33,7 @@ import pickle
 #logger for error which should and can! be handled by an administrator
 #tracer for all other events that are of interest for developer
 tracer = logging.getLogger(__name__)
-mylogger = logging.getLogger("com.ibm.streams.log")
+logger = logging.getLogger("com.ibm.streams.log")
 
 
 # Defines the SPL namespace for any functions in this module
@@ -81,15 +79,22 @@ class WMLOnlineScoring(spl.PrimitiveOperator):
         self._input_queue = list([])
         self._sending_threads = []
         self._lock = threading.Lock()
+        self._thread_finish_counter = 0
         tracer.debug("__init__ finished")
         return
 
     def __enter__(self):
         tracer.debug("__enter__ called")
         self._create_sending_threads()
-        self._start_sending_threads()
         self._wml_client = self._create_wml_client()
         tracer.debug("__enter__ finished")
+
+    def all_ports_ready(self):
+        tracer.debug("all_ports_ready() called")
+        self._start_sending_threads()
+        tracer.debug("all_port_ready() finished, sending threads started")
+        return self._join_sending_threads()
+    
 
 
     @spl.input_port()
@@ -122,17 +127,19 @@ class WMLOnlineScoring(spl.PrimitiveOperator):
 
 
     def __exit__(self, exc_type, exc_value, traceback):
+        tracer.debug("__exit__ called")
         self._end_sending_threads()
+        tracer.debug("__exit__ finished, sending threads triggered to stop")
     
     
     def _rest_handler(self, thread_index):
         tracer.debug("Thread %d started.", thread_index )
-        mylogger.error("Thread %d started.", thread_index )
         local_list = []
         tuple_counter = 0
+        send_counter = 0
         #as long as thread shall not stop
         while self._sending_threads[thread_index]['run']:
-            print("Thread ",thread_index, " start loop")
+            tracer.debug("Thread %d in loop received %d tuples.", thread_index,tuple_counter )
             #copy chunk of input tuples to threads own list and delete from global
             #our sending threads don't really need to run in parallel but in sequence so
             #we may lock for longer time here
@@ -140,17 +147,18 @@ class WMLOnlineScoring(spl.PrimitiveOperator):
             payload = []
             invalid_tuples = []
             predictions = []
+            local_list = []
             with self._lock:
                 #determine size and copy max size or all to local list
                 size = len(self._input_queue)
-                print("Thread: Size in queue ", size)
+                tracer.debug("WMLOnlineScoring: Thread %d input_queue len before copy %d!", thread_index, size)
                 if size > 0:
                     end_index = int(self._max_request_size) if size >= self._max_request_size else size
                     local_list = self._input_queue[:end_index]
                     del self._input_queue[:end_index]
                     tuple_counter = tuple_counter + end_index 
-                    #tracer.debug("WMLOnlineScoring: Thread %d read %d tuples from input queue!", thread_index, size)
-                    print("WMLOnlineScoring: Thread {0} read {1} tuples from input queue!", thread_index, end_index)
+                    tracer.debug("WMLOnlineScoring: Thread %d read %d tuples from input queue with local_list len %d!", thread_index, end_index, len(local_list))
+                tracer.debug("WMLOnlineScoring: Thread %d input_queue len after copy %d!", thread_index, len(self._input_queue))
             
             #do the rest not in lock
             if size > 0: 
@@ -173,8 +181,8 @@ class WMLOnlineScoring(spl.PrimitiveOperator):
                     As such we need to write the complete payload to invalid_tuples being submitted to 
                     error output port
                     """
-                    print("WML API error description: ",err.args[0])
-                    mylogger.error("WMLOnlineScoring: WML API error: ",err.args[0])
+                    tracer.error("WML API error description: %s",str(err.args[0]))
+                    logger.error("WMLOnlineScoring: WML API error: %s",str(err.args[0]))
                     #print("WML REST response headers: ",err.args[1].headers)
                     #print("WML REST response statuscode: ",err.args[1].status_code)
                     #print("WML REST response code: ",err.args[1].json()["errors"][0]["code"])
@@ -187,16 +195,16 @@ class WMLOnlineScoring(spl.PrimitiveOperator):
                     invalid_tuples = local_list
                     local_list = []
                 except:
-                    print ("Not expected exception", sys.exc_info()[0])
-                    mylogger.critical("WMLOnlineScoring: Unexpected error: %s",err.args[0])
+                    tracer.error("Unknown exception: %s", str(sys.exc_info()[0]))
+                    logger.error("WMLOnlineScoring: Unknown exception: %s", str(sys.exc_info()[0]))
                     #because the predictioon for whole bundle failed, the complete local_list is invalid
                     #invalid_tuples += local_list
                     invalid_tuples = local_list
                     local_list = []
 
-                #logger.info("WMLOnlineScoring: Thread %d got %d predictions from WML model deployment!", thread_index, len(predictions[0]['values']))
-                print("WMLOnlineScoring: Thread {0} got {1} predictions from WML model deployment!".format(thread_index, len(predictions['predictions'][0]['values'])))
+                tracer.debug("WMLOnlineScoring: Thread %d got %d predictions from WML model deployment!", thread_index, len(predictions['predictions'][0]['values']))
                  
+                local_list_index = 0
                 for prediction in predictions['predictions']:
                     #take the tuples from local list in sequence, sequence is same as the 
                     #sequence of prediction 'values' as input was generated in sequence of the local_list
@@ -209,24 +217,34 @@ class WMLOnlineScoring(spl.PrimitiveOperator):
                     #which happens when the model has optional parameters and input records doesn't have an optional
                     #field so new {'fields''values'} object with appropriate field names is generated as input
 
-                    #submit tuple list
-                    
-                    predictions_fields =  prediction['fields']
                     for values in prediction['values']:
+                        #get a complete dict with field,value for each prediction result
                         prediction_dict = dict(zip(prediction['fields'],values))
-                        self.submit('result_port',{'__spl_po':memoryview(pickle.dumps(prediction_dict)) })
+                        # and add it to the stored tuple in local list
+                        local_list[local_list_index]['prediction']=prediction_dict
+                        #submit the default topology tuple for raw Python objects
+                        self.submit('result_port',{'__spl_po':memoryview(pickle.dumps(local_list[local_list_index]))})
+                        local_list_index +=1
+                    send_counter += local_list_index
+                    tracer.debug("WMLOnlineScoring: Thread %d submitted now % and %d in sum tuples",thread_index, local_list_index, send_counter)
 
                 for _tuple in invalid_tuples:
                     #submit invalid tuples
-                    print ("WMLOnlineScoring: Thread Submit {0} invalid tuples",len(invalid_tuples))
+                    tracer.debug("WMLOnlineScoring: Thread Submit %d invalid tuples",len(invalid_tuples))
                     #self.submit('error_port',invalid_tuples)
             else:
                 #todo choose different approach to get threads waiting for input
                 #may be queue with blocking read but queue we can't use to use subslicing and slice-deleting
+                
+                #thread should finish, once decremented the counter it shall no more run
+                # and leave its task function
+                #if self._thread_finish_counter > 0 :
+                #    self._thread_finish_counter -= 1 
+                #    self._sending_threads[thread_index]['run'] = False
+                    
                 time.sleep(0.5)
                 
-        mylogger.info("WMLOnlineScoring: Thread %d stopped after %d records", thread_index,record_counter )
-        print("WMLOnlineScoring: Thread {0} stopped after {1} records".format(thread_index,record_counter) )
+        tracer.info("WMLOnlineScoring: Thread %d stopped after %d records", thread_index,record_counter )
     
     
     def _create_wml_client(self):
@@ -249,23 +267,36 @@ class WMLOnlineScoring(spl.PrimitiveOperator):
     
     def _create_sending_threads(self):
         for count in range(self._threads_per_node * self._node_count):
-            print("Create thread")
+            tracer.debug("Create thread")
             thread_control = {'index':count,'run':True}
             thread_control['thread'] = threading.Thread(target = WMLOnlineScoring._rest_handler,args=(self,count))
             self._sending_threads.append(thread_control)
-            print("Thread data: ",thread_control)
+            tracer.debug("Thread data: %s",str(thread_control))
     
     def _start_sending_threads(self):
         for thread_control in self._sending_threads:
-            print("to start sending thread",thread_control)
+            tracer.debug("Start sending thread %s",str(thread_control))
             thread_control['thread'].start()
     
     def _end_sending_threads(self):
         for thread_control in self._sending_threads:
             thread_control['run'] = False
+            
+    def _join_sending_threads(self):
+        tracer.debug("_join_sending_threads called during processing of operator stop.")
+        
+        # trigger threads to signal that they are ready
+        # each will decrement by 1 if all are ready it's again 0
+        #self._thread_finish_counter = len(self._sending_threads)
+        #tracer.debug("Wait for %d threads to finish processing of buffers", len(self._sending_threads))
+        
+        # wait that the trigger becomes 0 and all threads left their task func
+        #while self._thread_finish_counter > 0 : time.sleep(1.0)
+        #tracer.debug("All threads finished processing of buffers")
+
         for thread_control in self._sending_threads:
             thread_control['thread'].join()
-            print("Thread ", thread_control['index']," joined")
+            tracer.debug("Thread %d joined.", thread_control['index'])
 
     def _mapping_function(self,model_field_mapping,tuple_list):
         """Private function, special for my model and my input data

@@ -53,7 +53,7 @@ class Test(unittest.TestCase):
 
     def _create_stream(self, topo):
         """Create a stream of dicts, each having K/V for iris detection"""
-        s = topo.source([{"sepal_length" : 5.1 , "sepal_width" : 3.5 , "petal_length" : 1.4, "petal_width" : 0.2} for i in range (10000)])
+        s = topo.source([{"sepal_length" : 5.1 , "sepal_width" : 3.5 , "petal_length" : 1.4, "petal_width" : 0.2, "tuple_number": i} for i in range (10000)])
         return s
 
     def test_score_bundle(self):
@@ -80,13 +80,18 @@ class Test(unittest.TestCase):
         s = self._create_stream(topo) 
         # stream of dicts is consumed by wml_online_scoring
         scorings,invalids = wml.wml_online_scoring(s,
-                                     'c764e524-0876-4e03-a6da-5f3bbc5e5482', #deployment_guid
+                                     '72a15621-5e2e-44b5-a245-6a0fabc5de1e',#'c764e524-0876-4e03-a6da-5f3bbc5e5482', #deployment_guid
                                      field_mapping, 
                                      cloud_creds_env_var(), #wml_credentials,
-                                     '1fb6550c-b22a-4a90-93fc-458ec048662e',
-                                     expected_load = 10)
+                                     'e34d2846-cc27-4e8a-80af-3d0f7021d0cb',#'1fb6550c-b22a-4a90-93fc-458ec048662e',
+                                     expected_load = 10,
+                                     queue_size = 1000, 
+                                     threads_per_node = 1)
 
-        scorings.publish(topic="ScoredRecords")
+        trace_stream = scorings.map(lambda t: t)
+        print_stream = trace_stream.map(lambda t: print(str(t)))
+
+        trace_stream.publish(topic="ScoredRecords")
         invalids.publish(topic="InvalidRecords")
 
         #res.print()

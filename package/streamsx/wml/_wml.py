@@ -32,7 +32,7 @@ def wml_online_scoring( stream,
                         space_guid, 
                         expected_load = 1000, 
                         queue_size = 2000,  
-                        send_threads_per_node = 2, 
+                        threads_per_node = 2, 
                         connectionConfiguration=None, 
                         name = None):
     """Scores tuples received from input stream using the online scoring endpoint of WML referenced by the deployment_guid.
@@ -47,9 +47,6 @@ def wml_online_scoring( stream,
     topology = stream.topology
     _add_toolkit(topology)
 
-    #map from input to json
-    #mapped_input = stream.map(lambda t: json.dumps(t), schema=StreamSchema("tuple<rstring json_dict>").as_dict())
-
     _op = _WMLOnlineScoring(stream = stream, 
                             schemas = [StreamSchema('tuple<blob __spl_po>'),StreamSchema('tuple<blob __spl_po>')],
                             deployment_guid = deployment_guid, 
@@ -59,7 +56,7 @@ def wml_online_scoring( stream,
                             space_guid = space_guid, 
                             expected_load = expected_load, 
                             queue_size = queue_size,  
-                            send_threads_per_node = send_threads_per_node, 
+                            threads_per_node = threads_per_node, 
                             connectionConfiguration = connectionConfiguration, 
                             name = name)
 
@@ -78,7 +75,7 @@ class _WMLOnlineScoring(streamsx.spl.op.Invoke):
                        space_guid, 
                        expected_load, 
                        queue_size, 
-                       send_threads_per_node, 
+                       threads_per_node, 
                        connectionConfiguration, 
                        name):
 
@@ -94,7 +91,7 @@ class _WMLOnlineScoring(streamsx.spl.op.Invoke):
         params['space_guid'] = space_guid
         params['expected_load'] = expected_load
         params['queue_size'] = queue_size
-        params['threads_per_node'] = send_threads_per_node
+        params['threads_per_node'] = threads_per_node
 
         super(_WMLOnlineScoring, self).__init__(topology,kind,inputs,schemas,params,name)
 
