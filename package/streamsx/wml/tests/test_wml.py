@@ -1,17 +1,23 @@
-import streamsx.wml as wml
-
 from streamsx.topology.topology import Topology
 from streamsx.topology.tester import Tester
 from streamsx.topology.schema import CommonSchema, StreamSchema
 from streamsx.topology.context import ConfigParams
-import streamsx.spl.op as op
-import streamsx.spl.toolkit
+import streamsx.topology.context
 import streamsx.rest as sr
 import unittest
-import datetime
 import os
 import json
-from subprocess import call, Popen, PIPE
+import streamsx.wml as wml
+import streamsx.wml.utils as wml_utils
+
+
+
+#watson_machine_learning_client.WatsonMachineLearningAPIClient()
+
+from watson_machine_learning_client import WatsonMachineLearningAPIClient
+#test_func = wml_utils.get_wml_credentials()
+
+
 
 def cloud_creds_env_var():
     result = {}
@@ -59,7 +65,7 @@ class Test(unittest.TestCase):
     def test_score_bundle(self):
         print ('\n---------'+str(self))
 
-        test_field_mapping =[{"model_field":"Sepal.Length",
+        field_mapping =[{"model_field":"Sepal.Length",
                             "is_mandatory":True,
                             "tuple_field":"sepal_length"},
                            {"model_field":"Sepal.Width",
@@ -71,27 +77,23 @@ class Test(unittest.TestCase):
                            {"model_field":"Petal.Width",
                             "is_mandatory":True,
                             "tuple_field":"petal_width"}]
-        #putting list of dicts will generate a Java error during generation
-        #so just transform to already here and use JSON string as parameter                    
-        field_mapping = json.dumps(test_field_mapping)
 
         name = 'test_score_bundle'
         topo = Topology(name)
-        s = self._create_stream(topo) 
+        source_stream = self._create_stream(topo) 
         # stream of dicts is consumed by wml_online_scoring
-        scorings,invalids = wml.wml_online_scoring(s,
+        scorings,invalids = wml.wml_online_scoring(source_stream,
                                      '72a15621-5e2e-44b5-a245-6a0fabc5de1e',#'c764e524-0876-4e03-a6da-5f3bbc5e5482', #deployment_guid
                                      field_mapping, 
-                                     cloud_creds_env_var(), #wml_credentials,
+                                     json.loads(cloud_creds_env_var()), #wml_credentials,
                                      'e34d2846-cc27-4e8a-80af-3d0f7021d0cb',#'1fb6550c-b22a-4a90-93fc-458ec048662e',
-                                     expected_load = 10,
-                                     queue_size = 1000, 
+                                     expected_load = 1000,
+                                     queue_size = 2000, 
                                      threads_per_node = 1)
 
-        trace_stream = scorings.map(lambda t: t)
-        print_stream = trace_stream.map(lambda t: print(str(t)))
+        print_stream = scorings.map(lambda t: print(str(t)))
 
-        trace_stream.publish(topic="ScoredRecords")
+        scorings.publish(topic="ScoredRecords")
         invalids.publish(topic="InvalidRecords")
 
         #res.print()
