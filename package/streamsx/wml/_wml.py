@@ -113,10 +113,7 @@ def wml_online_scoring( stream,
 
     # calling SPL operators will result anytime in schema based output streams
     # these need to be mapped back to the Python object Stream we received
-    #result_stream = _op.outputs[0]
-    #error_stream = _op.outputs[1]
 
-#    return result_stream.map(lambda t: t), error_stream.map(lambda t: t)
     return _op.outputs[0],_op.outputs[1]
 
 
@@ -138,7 +135,7 @@ class _WMLOnlineScoring(streamsx.spl.op.Invoke):
         topology = stream.topology
         kind="com.ibm.streams.wml::WMLOnlineScoring"
         inputs=[stream]
-        schemas=[StreamSchema('tuple<blob __spl_po>'),StreamSchema('tuple<blob __spl_po>')]
+        schemas=[object,object]  #not [StreamSchema('tuple<blob __spl_po>'),StreamSchema('tuple<blob __spl_po>')]
         params = dict()
         params['deployment_guid'] = deployment_guid
         params['wml_credentials'] = credentials
