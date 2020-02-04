@@ -1,0 +1,3 @@
+include streamsx/wml/spl/toolkit.wml/com.ibm.streams.wml/opt/python/streams/wml_online_scoring.py
+include streamsx/wml/spl/toolkit.wml/com.ibm.streams.wml/opt/python/streams/requirements.txt
+include streamsx/wml/spl/toolkit.wml/com.ibm.streams.wml/info.xml

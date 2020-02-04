@@ -1,0 +1,8 @@
+###### Requirements with Version Specifiers ######
+#future == 0.17.1
+#dill == 0.2.7.1
+#cython == 0.28.3
+#scipy == 1.1.0
+#pandas == 0.22
+#tqdm == 4.31.1
+watson-machine-learning-client-v4 == 1.0.60          

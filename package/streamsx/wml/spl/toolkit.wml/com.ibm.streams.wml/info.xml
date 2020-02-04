@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<toolkitInfoModel xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.ibm.com/xmlns/prod/streams/spl/toolkitInfo" xsi:schemaLocation="http://www.ibm.com/xmlns/prod/streams/spl/toolkitInfo toolkitInfoModel.xsd">
+  <identity>
+    <name>com.ibm.streams.wml</name>
+    <description><![CDATA[
+# Overview
+
+]]></description>
+    <version>1.0.0</version>
+    <requiredProductVersion>4.3.0.0</requiredProductVersion>
+    </identity>
+  <dependencies/>
+
+  <resources>
+    <messageSet name="TopologySplpyResource">
+      <lang default="true">en_US/TopologySplpyResource.xlf</lang>
+      <lang>de_DE/TopologySplpyResource.xlf</lang>
+      <lang>es_ES/TopologySplpyResource.xlf</lang>
+      <lang>fr_FR/TopologySplpyResource.xlf</lang>
+      <lang>it_IT/TopologySplpyResource.xlf</lang>
+      <lang>ja_JP/TopologySplpyResource.xlf</lang>
+      <lang>ko_KR/TopologySplpyResource.xlf</lang>
+      <lang>pt_BR/TopologySplpyResource.xlf</lang>
+      <lang>ru_RU/TopologySplpyResource.xlf</lang>
+      <lang>zh_CN/TopologySplpyResource.xlf</lang>
+      <lang>zh_TW/TopologySplpyResource.xlf</lang>
+    </messageSet>
+  </resources>
+  
+  <sabFiles>
+    <exclude path="opt/client/**"/>
+    <exclude path="opt/icons/**"/>
+    <exclude path="opt/python/codegen/**"/>
+    <exclude path="opt/python/include/**"/>
+    <exclude path="opt/python/templates/**"/>
+    <exclude path="opt/python/packages/**/__pycache__/**"/>
+  </sabFiles>
+</toolkitInfoModel>
