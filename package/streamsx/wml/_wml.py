@@ -33,34 +33,46 @@ def wml_online_scoring( stream,
                         threads_per_node = 2, 
                         connectionConfiguration=None, 
                         name = None):
-    """Scores tuples received from input stream using the online scoring endpoint of WML referenced by the deployment_guid.
-    Models can be created, trained and deployed in Watson Studio, using notebooks resp. other tools in Cloud Pak for Data.
+    """
+    Scoring tuples received from input :py:class:`stream` using the online scoring endpoint of WML referenced by the :py:class:`deployment_guid`.
+    Mapping from input attributes to the models minning fields is done by the :py:class:`field_mapping` parameter.
+
 
     Args:
-        stream              input stream
-        deployment_guid     GUID of the WML deplyoment to be used to score the input data
-        field_mapping       list (or JSOON array) of mappings between model fields and input tuple elements
-                            [{'model_field':str, 'is_mandatory':bool,'tuple_field':str},{...}]
-        credentials         dict or (JSON object) of WML credentials to be used
-                            {'url':str,'token':str,'instance_id': str,'version':str}
-        space_guid          GUID of the used deployment space
-        expected_load       optional field, giving the expected tuple throughput
-                            used to determine a maximum number of tuple to be sent in one request to 
-                            WML online scoring, maximum number = expected_load / threads_per_node
-                            this value has most impact on throughput performance
-                            default:1000 
-        queue_size          optional field to set the internal buffer size after which back-pressure happens
-                            default:2000
-        threads_per_node    optional field to set the number of threads used to process the received tuples
-                            may increase throughput performance by using free resources while other thread(s) waiting
-                            for the asynchronous result from online scoring
-                            default: 2 
-        name                optional field to give the resulting Streams operator a name of your choice
-    Returns:
-        tuple(result_stream, error_stream)
+        stream (:py:class:`topology_ref:streamsx.topology.topology.Stream`):         
+            input stream of data to be scored
+        deployment_guid (str): 
+            GUID of the WML deplyoment to be used to score the input data
+        field_mapping (list|str): 
+            list or JSON string representing the
+            mappings between model fields and input tuple elements
+            [{'model_field':str, 'is_mandatory':bool,'tuple_field':str},{...}]
+        credentials (dict|str): 
+            dict or JSON string of WML credentials to be used
+            {'url':<cp4d_cluster_url>,'token':<token_of authenticated_user>,'instance_id': 'wml_local','version':'2.5.0'}
+        space_guid (str): 
+            GUID of the used deployment space
+        expected_load (int, optional): 
+            The expected tuple throughput which is
+            used to determine a maximum number of tuple to be sent in one request to 
+            WML online scoring, maximum number = expected_load / threads_per_node
+            this value has most impact on throughput performance, defaults to 1000
+        queue_size (int, optional): 
+            The internal buffer size after which back-pressure happens, defaults to 2000
+        threads_per_node (int, optional): 
+            optional field to set the number of threads used to process the received tuples
+            may increase throughput performance by using free resources while other thread(s) waiting
+            for the asynchronous result from online scoring, defaults to 2 
+        name (str, optional): 
+            Give the resulting Streams operator a name of your choice
         
-            result_stream: Tuples as received on input extended by the scoring result field 'predictions' of type dict
-            error_stream : Tuples as received on input extended by the error indication 'scoring_error' of type dict
+    Returns:
+        result_stream, error_stream(:py:class:`topology_ref:streamsx.topology.topology.Stream`, :py:class:`topology_ref:streamsx.topology.topology.Stream`):
+            Returns two streams for further processing
+            
+            - result_stream: Tuples as received on input extended by the scoring result field predictions of type dict
+            - error_stream : Tuples as received on input extended by the error indication `scoring_error` of type dict
+            
     """
     # add private toolkit
     topology = stream.topology
