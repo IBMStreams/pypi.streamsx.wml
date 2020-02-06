@@ -9,7 +9,8 @@ import os
 import json
 import streamsx.wml as wml
 import streamsx.wml.utils as wml_utils
-
+from streamsx.wml.processstorage import ProcessStorage
+import threading
 
 
 #watson_machine_learning_client.WatsonMachineLearningAPIClient()
@@ -62,7 +63,7 @@ class Test(unittest.TestCase):
         s = topo.source([{"sepal_length" : 5.1 , "sepal_width" : 3.5 , "petal_length" : 1.4, "petal_width" : 0.2, "tuple_number": i} for i in range (10000)])
         return s
 
-    def test_score_bundle(self):
+    def _1test_score_bundle(self):
         print ('\n---------'+str(self))
 
         field_mapping =[{"model_field":"Sepal.Length",
@@ -102,6 +103,29 @@ class Test(unittest.TestCase):
         else:
             # build only
             self._build_only(name, topo)
+            
+            
+    def test_ProcessStorage(self):
+
+        #set class variables
+        ProcessStorage.max_copy_size = 2
+        lock = threading.Lock()
+        ProcessStorage.input_list_lock = lock
+        
+        #create instance by copying from a source_list
+        source_list = [{"a":i} for i in range(10)]
+        test_store1 = ProcessStorage(1, source_list)
+        print ("source_list: ", source_list)
+        assert len(source_list) == 8
+        ProcessStorage.max_copy_size = 4
+        test_store2 = ProcessStorage(2, source_list)
+        print ("source_list: ", source_list)
+        print ("local_list 1: ", test_store1.local_list)
+        print ("local_list 2: ", test_store2.local_list)
+        assert len(source_list) == 4
+        
+        
+        
 
 class TestDistributed(Test):
     def setUp(self):
