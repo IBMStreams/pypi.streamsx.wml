@@ -9,7 +9,8 @@ import os
 import json
 import streamsx.wml as wml
 import streamsx.wml.utils as wml_utils
-from streamsx.wml.processstorage import ProcessStorage
+from streamsx.wml.wmlbundleresthandler import WmlBundleRestHandler
+from streamsx.wml.bundleresthandler import BundleRestHandler
 import threading
 
 
@@ -105,26 +106,158 @@ class Test(unittest.TestCase):
             self._build_only(name, topo)
             
             
-    def test_ProcessStorage(self):
+    def test_BundleRestHandler_copy(self):
 
         #set class variables
-        ProcessStorage.max_copy_size = 2
+        BundleRestHandler.max_copy_size = 2
         lock = threading.Lock()
-        ProcessStorage.input_list_lock = lock
+        BundleRestHandler.input_list_lock = lock
         
         #create instance by copying from a source_list
         source_list = [{"a":i} for i in range(10)]
-        test_store1 = ProcessStorage(1, source_list)
+        test_store1 = BundleRestHandler(1, source_list)
         print ("source_list: ", source_list)
         assert len(source_list) == 8
-        ProcessStorage.max_copy_size = 4
-        test_store2 = ProcessStorage(2, source_list)
+        BundleRestHandler.max_copy_size = 4
+        test_store2 = BundleRestHandler(2, source_list)
         print ("source_list: ", source_list)
-        print ("local_list 1: ", test_store1.local_list)
-        print ("local_list 2: ", test_store2.local_list)
+        print ("local_list 1: ", test_store1._data_list)
+        print ("local_list 2: ", test_store2._data_list)
         assert len(source_list) == 4
         
+    def test_WmlBundleRestHandler_preprocess(self):
+
+        #set class variables
+        WmlBundleRestHandler.max_copy_size = 5
+        lock = threading.Lock()
+        WmlBundleRestHandler.input_list_lock = lock
+        WmlBundleRestHandler.field_mapping=[{"model_field":"a_",
+                                       "tuple_field":"a"},
+                                      {"model_field":"b_",
+                                       "tuple_field":"b"}                                       
+                                     ]
         
+        # list of 10 valid tuples
+        source_list = [{"a":i, "b": i+1, "c": i+2} for i in range(10)]
+        test_store1 = WmlBundleRestHandler(1, source_list,"wmlclient","deploymentid")
+        test_store1.preprocess()
+        expected_payload = [{'fields': ['a_', 'b_'], 'values': [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5]]}]
+        print(test_store1.get_payload())
+        assert expected_payload == test_store1.get_payload()
+        
+        assert len(source_list) == 5
+        
+        test_store2 = WmlBundleRestHandler(2, source_list,"wmlclient","deploymentid")
+        test_store2.preprocess()
+        expected_payload = [{'fields': ['a_', 'b_'], 'values': [[5, 6], [6, 7], [7, 8], [8, 9], [9, 10]]}]
+        print(test_store2.get_payload())
+        assert expected_payload == test_store2.get_payload()
+        assert len(source_list) == 0
+        
+
+
+
+        # mixed list of 10 valid and invalid tuples
+        source_list = [{"a":i, "b": i+1, "c": i+2} for i in range(10)]
+        source_list[4].pop("b")
+        source_list[2].pop("a")
+        source_list[8].pop("b")
+        source_list[8].pop("a")
+
+        test_store1 = WmlBundleRestHandler(1, source_list,"wmlclient","deploymentid")
+        test_store1.preprocess()
+        expected_payload = [{'fields': ['a_', 'b_'], 'values': [[0, 1], [1, 2], [3, 4]]}]
+        expected_status = [{'mapping_success': True, 'score_success': False, 'message': None}, 
+                           {'mapping_success': True, 'score_success': False, 'message': None}, 
+                           {'mapping_success': False, 'score_success': False, 'message': 'Missing mandatory input field: a'}, 
+                           {'mapping_success': True, 'score_success': False, 'message': None}, 
+                           {'mapping_success': False, 'score_success': False, 'message': 'Missing mandatory input field: b'}]
+        print(test_store1.get_payload())
+        print(test_store1.get_status())
+        assert expected_payload == test_store1.get_payload()
+        assert expected_status == test_store1.get_status()
+        
+        assert len(source_list) == 5
+        
+        test_store2 = WmlBundleRestHandler(2, source_list,"wmlclient","deploymentid")
+        test_store2.preprocess()
+        expected_payload = [{'fields': ['a_', 'b_'], 'values': [[5, 6], [6, 7], [7, 8], [9, 10]]}]
+        expected_status = [{'mapping_success': True, 'score_success': False, 'message': None}, 
+                           {'mapping_success': True, 'score_success': False, 'message': None}, 
+                           {'mapping_success': True, 'score_success': False, 'message': None}, 
+                           {'mapping_success': False, 'score_success': False, 'message': 'Missing mandatory input field: a'}, 
+                           {'mapping_success': True, 'score_success': False, 'message': None}]
+        print(test_store2.get_payload())
+        print(test_store2.get_status())
+        assert expected_payload == test_store2.get_payload()
+        assert expected_status == test_store2.get_status()
+        assert len(source_list) == 0
+
+
+
+    def test_WmlBundleRestHandler_synch_rest_call(self):
+
+        #set class variables
+        WmlBundleRestHandler.max_copy_size = 5
+        lock = threading.Lock()
+        WmlBundleRestHandler.input_list_lock = lock
+        WmlBundleRestHandler.field_mapping=[{"model_field":"a_", "tuple_field":"a"},
+                                            {"model_field":"b_", "tuple_field":"b"}                                       
+                                           ]
+        
+        # list of 10 tuples, 5 valid + 5 mixed
+        source_list = [{"a":i, "b": i+1, "c": i+2} for i in range(10)]
+        source_list[5].pop("a")
+        source_list[8].pop("b")
+        source_list[8].pop("a")
+
+        test_store1 = WmlBundleRestHandler(1, source_list,"wmlclient","deploymentid")
+        test_store1.preprocess()
+        test_store1.synch_rest_call()
+        
+        expected_response = {'predictions': [{'fields': ['prediction$1', 'prediction$2'], 'values': [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5]]}]}
+        print('test_store1.get_rest_response')
+        print(test_store1.get_rest_response())
+        assert expected_response == test_store1.get_rest_response()
+
+        expected_status = [{'mapping_success': True, 'score_success': True, 'message': None}, 
+                           {'mapping_success': True, 'score_success': True, 'message': None}, 
+                           {'mapping_success': True, 'score_success': True, 'message': None}, 
+                           {'mapping_success': True, 'score_success': True, 'message': None}, 
+                           {'mapping_success': True, 'score_success': True, 'message': None}
+                          ]
+        print('test_store1.get_rest_status')
+        print(test_store1.get_status())
+        assert expected_status == test_store1.get_status()
+        
+        test_store1.postprocess()
+
+        expected_result = [{'Prediction': {'prediction$1': 0, 'prediction$2': 1}}, 
+                           {'Prediction': {'prediction$1': 1, 'prediction$2': 2}}, 
+                           {'Prediction': {'prediction$1': 2, 'prediction$2': 3}}, 
+                           {'Prediction': {'prediction$1': 3, 'prediction$2': 4}}, 
+                           {'Prediction': {'prediction$1': 4, 'prediction$2': 5}}
+                          ]
+        print('test_store1.get_result_data')
+        print(test_store1.get_result_data())
+        assert expected_result == test_store1.get_result_data()
+        
+        expected_final = [{'Prediction': {'prediction$1': 0, 'prediction$2': 1},'a': 0, 'b': 1, 'c': 2}, 
+                          {'Prediction': {'prediction$1': 1, 'prediction$2': 2},'a': 1, 'b': 2, 'c': 3}, 
+                          {'Prediction': {'prediction$1': 2, 'prediction$2': 3},'a': 2, 'b': 3, 'c': 4}, 
+                          {'Prediction': {'prediction$1': 3, 'prediction$2': 4},'a': 3, 'b': 4, 'c': 5}, 
+                          {'Prediction': {'prediction$1': 4, 'prediction$2': 5},'a': 4, 'b': 5, 'c': 6}
+                         ]
+                         
+                         
+        print('test_store1.get_final_data')
+        print(test_store1.get_final_data())
+        assert expected_final == test_store1.get_final_data()
+        
+        
+        assert len(source_list) == 5
+
+
         
 
 class TestDistributed(Test):
