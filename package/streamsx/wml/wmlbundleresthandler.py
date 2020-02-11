@@ -6,7 +6,6 @@
 from watson_machine_learning_client import WatsonMachineLearningAPIClient
 from watson_machine_learning_client.wml_client_error import ApiRequestFailure
 
-from collections import ChainMap   
 import logging
    
 tracer = logging.getLogger(__name__)   
@@ -18,9 +17,9 @@ _STREAMSX_MAPPING_ERROR_MISSING_MANDATORY = "Missing mandatory input field: "
    
 class WmlBundleRestHandler(BundleRestHandler):
 
-    def __init__(self,storage_id, input_queue,wml_client, deployment_guid):
+    def __init__(self,storage_id, wml_client, deployment_guid):
 
-        super().__init__(storage_id, input_queue)
+        super().__init__(storage_id)
         self._wml_client = wml_client
         self._deployment_guid = deployment_guid
         
@@ -44,8 +43,6 @@ class WmlBundleRestHandler(BundleRestHandler):
         # this is a sample where all fields are required and are anytime in the input tuple
         # model fields have to be in order/sequence as expected by the model
 
-        assert self.field_mapping is not None
-    
         # keep this assert as long as we don't support optional fields
         assert self.allow_optional_fields is False
         
@@ -97,9 +94,7 @@ class WmlBundleRestHandler(BundleRestHandler):
         
         try:
             if len(self._payload_list) > 0:
-                #self._rest_response = self._wml_client.deployments.score(self._deployment_guid,meta_props={'input_data':self._payload_list})
-                #testmockup
-                self._rest_response = {'predictions': [{'fields': ['prediction$1', 'prediction$2'], 'values': [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5]]}]}
+                self._rest_response = self._wml_client.deployments.score(self._deployment_guid,meta_props={'input_data':self._payload_list})
         except wml_client_error.ApiRequestFailure as err:
             """REST request returns 
             400 incase something with the value of 'input_data' is not correct
@@ -149,26 +144,25 @@ class WmlBundleRestHandler(BundleRestHandler):
         
 
     def postprocess(self):
+
+        #scoring REST call had error, no result to process
+        #just the error fields have to be provided
         if self._rest_response is None:
-            #scoring REST call had error, no result to process
-            #just the error fields have to be provided
             for index, item in enumerate(self._status_list):
                 self._result_list[index] = {"PredictionError": item["message"]}
             return 
             
+        #take the tuples from local list in sequence, sequence is same as the 
+        #sequence of prediction 'values' as input was generated in sequence of the _data_list
+        #there is no reference from input to prediction except the position in sequence
+        #use output mapping function or just add the raw result to tuple
+        #for later separation and processing
+        #each prediction contains model result 'fields' and one or more 'values' lists
+        #one value list for each scoring set
+        # only data with successful mapping was added in payload and gets response data
         for prediction in self._rest_response['predictions']:
-            #take the tuples from local list in sequence, sequence is same as the 
-            #sequence of prediction 'values' as input was generated in sequence of the _data_list
-            #there is no reference from input to prediction except the position in sequence
-            #use output mapping function or just add the raw result to tuple
-            #for later separation and processing
-            #each prediction contains model result 'fields' and one or more 'values' lists
-            #one value list for each scoring set
-
-            response_index = 0 # index to result data in the REST response
-            
+            response_index = 0 
             for data_index,item in enumerate(self._status_list):
-                # only data with successful mapping was added in payload and gets response data
                 if item["mapping_success"] :
                     self._result_list[data_index] = {"Prediction" : dict(zip(prediction['fields'],prediction['values'][response_index]))}
                     response_index += 1 
@@ -188,6 +182,4 @@ class WmlBundleRestHandler(BundleRestHandler):
                 tracer.debug("WMLOnlineScoring: Thread %d submitted now % and %d in sum tuples",thread_index, local_list_index, send_counter)
             '''
         
-    def get_final_data(self):
-        chain = [dict(ChainMap(*[data, result])) for data, result in zip(self._data_list, self._result_list)]
-        return chain
+        
