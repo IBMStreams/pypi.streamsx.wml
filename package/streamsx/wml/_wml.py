@@ -30,7 +30,8 @@ def wml_online_scoring( stream,
                         space_guid, 
                         expected_load = 1000, 
                         queue_size = 2000,  
-                        threads_per_node = 2, 
+                        threads_per_node = 2,
+                        single_output = False, 
                         connectionConfiguration=None, 
                         name = None):
     """
@@ -63,6 +64,9 @@ def wml_online_scoring( stream,
             optional field to set the number of threads used to process the received tuples
             may increase throughput performance by using free resources while other thread(s) waiting
             for the asynchronous result from online scoring, defaults to 2 
+        single_output (bool, optional): 
+            optional field to define if error data and success data should be send 
+            to one output (stream) or to 2 different outputs (streams), defaults to False
         name (str, optional): 
             Give the resulting Streams operator a name of your choice
         
@@ -119,7 +123,8 @@ def wml_online_scoring( stream,
                             space_guid = space_guid, 
                             expected_load = expected_load, 
                             queue_size = queue_size,  
-                            threads_per_node = threads_per_node, 
+                            threads_per_node = threads_per_node,
+                            single_output = single_output, 
                             connectionConfiguration = connectionConfiguration, 
                             name = name)
 
@@ -140,7 +145,8 @@ class _WMLOnlineScoring(streamsx.spl.op.Invoke):
                        space_guid, 
                        expected_load, 
                        queue_size, 
-                       threads_per_node, 
+                       threads_per_node,
+                       single_output, 
                        connectionConfiguration, 
                        name):
 
@@ -157,6 +163,7 @@ class _WMLOnlineScoring(streamsx.spl.op.Invoke):
         params['expected_load'] = expected_load
         params['queue_size'] = queue_size
         params['threads_per_node'] = threads_per_node
+        params['single_output'] = single_output
 
         super(_WMLOnlineScoring, self).__init__(topology,kind,inputs,schemas,params,name)
 

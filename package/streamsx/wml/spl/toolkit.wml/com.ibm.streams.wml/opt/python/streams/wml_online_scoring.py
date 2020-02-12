@@ -9,19 +9,17 @@
 from streamsx.spl import spl
 from streamsx.ec import get_application_configuration
 from streamsx.ec import is_active
+from bundleresthandler.wmlbundleresthandler import WmlBundleRestHandler
+# WML specific imports
+from watson_machine_learning_client import WatsonMachineLearningAPIClient
+from watson_machine_learning_client.wml_client_error import ApiRequestFailure
+# standard python imports
 import re, os, time
 import sys
 import logging
 import json
 import time
 from datetime import datetime
-from watson_machine_learning_client.utils import MODEL_DETAILS_TYPE
-from numpy.distutils.exec_command import temp_file_name
-# WML specific imports
-from watson_machine_learning_client import WatsonMachineLearningAPIClient
-from watson_machine_learning_client.wml_client_error import ApiRequestFailure
-from requests.exceptions import MissingSchema
-
 import copy
 import queue
 import threading
@@ -57,7 +55,8 @@ class WMLOnlineScoring(spl.PrimitiveOperator):
                        space_guid, 
                        expected_load, 
                        queue_size, 
-                       threads_per_node ):
+                       threads_per_node,
+                       single_output ):
         """Instantiates a WMLOnlineScoring object at application runtime (Streams application runtime container).
         
         It creates a WML client connecting to WML service with provided credentials and
@@ -67,21 +66,47 @@ class WMLOnlineScoring(spl.PrimitiveOperator):
         """
         tracer.debug("__init__ called")
         self._deployment_guid = deployment_guid
-        #self._mapping_function = mapping_function
+        # self._mapping_function = mapping_function
         self._field_mapping = json.loads(field_mapping)
         self._wml_credentials = json.loads(wml_credentials)
         self._deployment_space = space_guid
         self._expected_load = expected_load
         self._max_queue_size = queue_size
         self._threads_per_node = threads_per_node
+        self._single_output = single_output
         self._node_count = 1
         self._max_request_size = 10 if expected_load is None else int(expected_load/self._threads_per_node/self._node_count)
         self._input_queue = list([])
         self._sending_threads = []
         self._lock = threading.Lock()
         self._thread_finish_counter = 0
+        
+        # Configure the WmlBundleRestHandler class
+        WmlBundleRestHandler.max_copy_size = self._max_request_size
+        WmlBundleRestHandler.input_list_lock = self._lock
+        WmlBundleRestHandler.source_data_list = self._input_queue
+        WmlBundleRestHandler.field_mapping = self._field_mapping
+        WmlBundleRestHandler.output_function = (lambda z,x: print(str( x)))
+        WmlBundleRestHandler.single_output = self._single_output
+        
         tracer.debug("__init__ finished")
         return
+        
+    def _output_function(result):
+        '''Callable to be given to BundleRestHandler providing wanted output of the 
+        generated data.
+        Parameter
+        +++++++++
+        
+        args    depending on the value of ''single_output'' args are either a single value of type list
+        or a tuple of type list
+        '''
+        #self.submit('result_port',{'__spl_po':memoryview(pickle.dumps(local_list[local_list_index]))})
+        print ("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+        print ("Output Result :", type(result))
+        print ("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+        print ("Output Result :", result)
+        print ("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 
     def __enter__(self):
         tracer.debug("__enter__ called")
@@ -114,7 +139,7 @@ class WMLOnlineScoring(spl.PrimitiveOperator):
         # as most comfortable also when having no defined attribute sequence anymore
         input_tuple = pickle.loads(python_tuple['__spl_po'].tobytes())
 
-        # allow backpressure, block calling thread here until input_tuple can be stored 
+        # force backpressure, block calling thread here until input_tuple can be stored 
         while(len(self._input_queue) >=  self._max_queue_size):
             #todo check thread status
             time.sleep(1)
@@ -133,6 +158,44 @@ class WMLOnlineScoring(spl.PrimitiveOperator):
     
     
     def _rest_handler(self, thread_index):
+        tracer.debug("Thread %d started.", thread_index )
+        
+        wml_bundle_handler = WmlBundleRestHandler(thread_index,self._wml_client,self._deployment_guid)
+        tuple_counter = 0
+        send_counter = 0
+        #as long as thread shall not stop
+        while self._sending_threads[thread_index]['run']:
+            tracer.debug("Thread %d in loop received %d tuples.", thread_index,tuple_counter )
+            if  wml_bundle_handler.copy_from_source() > 0:
+                tracer.debug("Thread %d in loop copy.")
+                wml_bundle_handler.preprocess()
+                tracer.debug("Thread %d in loop preprocess.")
+                wml_bundle_handler.synch_rest_call()
+                tracer.debug("Thread %d in loop REST call.")
+                wml_bundle_handler.postprocess()
+                tracer.debug("Thread %d in loop postprocess.")
+                wml_bundle_handler.write_result_to_output()
+                tracer.debug("Thread %d in loop output.")
+            else:
+                tracer.debug("Thread %d in loop sleep.")
+                #todo choose different approach to get threads waiting for input
+                #may be queue with blocking read but queue we can't use to use subslicing and slice-deleting
+                
+                #thread should finish, once decremented the counter it shall no more run
+                # and leave its task function
+                #if self._thread_finish_counter > 0 :
+                #    self._thread_finish_counter -= 1 
+                #    self._sending_threads[thread_index]['run'] = False
+                    
+                time.sleep(0.2)
+                
+        tracer.info("WMLOnlineScoring: Thread %d stopped after %d records", thread_index,record_counter )
+            
+
+
+
+
+    def _rest_handler_old(self, thread_index):
         tracer.debug("Thread %d started.", thread_index )
         local_list = []
         tuple_counter = 0
@@ -251,6 +314,7 @@ class WMLOnlineScoring(spl.PrimitiveOperator):
         wml_client = WatsonMachineLearningAPIClient(self._wml_credentials)
         # set space before using any client function
         wml_client.set.default_space(self._deployment_space)
+        tracer.debug("WMLOnlineScoring: WML client created")
         return wml_client
     
     def _change_thread_number(self,delta):
@@ -438,7 +502,7 @@ class WMLOnlineScoring(spl.PrimitiveOperator):
                             if all (json_config[k]!=None for k in wml_keys):
                                 return {k:json_config[k] for k in wml_keys}            
                                 
-        tracer.error("WMLModelFeed: Could not get valid WML connection config from: " + config_name + ".")
+        tracer.error("Could not get valid WML connection config from: " + config_name + ".")
         return None
 
 

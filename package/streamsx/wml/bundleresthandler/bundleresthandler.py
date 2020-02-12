@@ -34,7 +34,8 @@ class BundleRestHandler():
     field_mapping = None
     '''list with input data attribute to mining model field mapping'''
     keep_data_order = True
-    '''Defines if output data shall be send in same order as input data. 
+    '''For future use: The actual version doesn't support unordered output
+    Defines if output data shall be send in same order as input data. 
     This has only impact if optional fields are allowed.
     '''
     single_output = True
@@ -57,7 +58,7 @@ class BundleRestHandler():
         '''ProcessStorage is created build up by copying oldest input data from input queue
         and deleting them from this queue.
         '''
-        tracer.debug(__name__,"Enter init")
+        tracer.debug("Enter init")
         assert self.input_list_lock is not None
         assert self.source_data_list is not None
         assert self.field_mapping is not None
@@ -86,8 +87,9 @@ class BundleRestHandler():
         self._rest_response = []        # holds the REST response, REST errors are reflected in _status_list
         self._result_list = []          # REST result list, needs to have one entry for each data being in payload, result index equals to data index 
 
+        # python threading is just sequential processing, staying little longer in lock doesn't matter
         with self.input_list_lock:
-            #determine size and copy max size or all to local list
+            #determine size and copy max size or all to local data list
             input_size = len(self.source_data_list)
             tracer.debug("ProcessStorage (%d) : source_data_list len before copy %d!", self._storage_id, input_size)
             if input_size > 0:
@@ -96,23 +98,24 @@ class BundleRestHandler():
                 del self.source_data_list[:end_index]
                 self._data_size = end_index 
                 tracer.debug("ProcessStorage (%d) :  read %d tuples from input queue with _data_list len %d!", self._storage_id, end_index, len(self._data_list))
-            tracer.debug("ProcessStorage (%d) : source_data_list len after copy %d!", self._storage_id, len(self.source_data_list))
-            self._bundle_number = self.bundle_counter
-            self.bundle_counter += 1
+                self._bundle_number = self.bundle_counter
+                self.bundle_counter += 1
     
-        #create the status list at once
-        self._status_list = [{"mapping_success":False,"score_success":False,"message":None} for i in range(self._data_size)]
-        #create the result list at once
-        self._result_list = [None for i in range(self._data_size)]
+                #create the status list at once
+                self._status_list = [{"mapping_success":False,"score_success":False,"message":None} for i in range(self._data_size)]
+                #create the result list at once
+                self._result_list = [None for i in range(self._data_size)]
+                tracer.debug("ProcessStorage (%d) : source_data_list len after copy %d!", self._storage_id, len(self.source_data_list))
+        return self._data_size                
         
     def get_final_data(self, single_list = True):
         if single_list:
             single_output = [{**data,**result} for data, result in zip(self._data_list, self._result_list)]
-            return single_output
+            return [single_output]
         else:
             success_output = [{**data,**result} for data, result, status in zip(self._data_list, self._result_list, self._status_list) if status["message"] is None]
             error_output = [{**data,**result} for data, result, status in zip(self._data_list, self._result_list, self._status_list) if status["message"] is not None]
-            return success_output, error_output
+            return [success_output, error_output]
     
     def write_result_to_output(self):
         while self.next_bundle_to_sent is not self._bundle_number:

@@ -9,17 +9,13 @@ import os
 import json
 import streamsx.wml as wml
 import streamsx.wml.utils as wml_utils
-from streamsx.wml.wmlbundleresthandler import WmlBundleRestHandler
-from streamsx.wml.bundleresthandler import BundleRestHandler
+from streamsx.wml.bundleresthandler.wmlbundleresthandler import WmlBundleRestHandler
+from streamsx.wml.bundleresthandler.bundleresthandler import BundleRestHandler
+
 import threading
 
 
-#watson_machine_learning_client.WatsonMachineLearningAPIClient()
-
 from watson_machine_learning_client import WatsonMachineLearningAPIClient
-#test_func = wml_utils.get_wml_credentials()
-
-
 
 def cloud_creds_env_var():
     result = {}
@@ -64,7 +60,7 @@ class Test(unittest.TestCase):
         s = topo.source([{"sepal_length" : 5.1 , "sepal_width" : 3.5 , "petal_length" : 1.4, "petal_width" : 0.2, "tuple_number": i} for i in range (10000)])
         return s
 
-    def _1test_score_bundle(self):
+    def test_score_bundle(self):
         print ('\n---------'+str(self))
 
         field_mapping =[{"model_field":"Sepal.Length",
@@ -225,14 +221,6 @@ class Test(unittest.TestCase):
 
     def test_WmlBundleRestHandler_synch_rest_call(self):
 
-        # to be injected to class for testing loopback
-        def rest_mock(self, **args):
-                if len(self._payload_list[0]["values"]) is 5:
-                    self._rest_response = {'predictions': [{'fields': ['prediction$1', 'prediction$2'], 'values': [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5]]}]}
-                else:
-                    self._rest_response = {'predictions': [{'fields': ['prediction$1', 'prediction$2'], 'values': [[6, 7], [7, 8], [9, 10]]}]}
-
-
         # list of 10 tuples, 5 valid + 5 mixed
         source_list = [{"a":i, "b": i+1, "c": i+2} for i in range(10)]
         source_list[5].pop("a")
@@ -248,9 +236,12 @@ class Test(unittest.TestCase):
                                             {"model_field":"b_", "tuple_field":"b"}                                       
                                            ]
         WmlBundleRestHandler.source_data_list = source_list
+
         class print_out():
             def __call__(self,x):
+                print ("type of callable attribute: ", type(x))
                 print (x)
+
         WmlBundleRestHandler.output_function = print_out() #(lambda z,x: print(str( x)))
         WmlBundleRestHandler.single_output = False
 
@@ -304,12 +295,12 @@ class Test(unittest.TestCase):
         print(test_store1.get_postprocess_result())
         assert expected_result == test_store1.get_postprocess_result()
 
-        expected_final = [{'Prediction': {'prediction$1': 0, 'prediction$2': 1},'a': 0, 'b': 1, 'c': 2}, 
+        expected_final = [[{'Prediction': {'prediction$1': 0, 'prediction$2': 1},'a': 0, 'b': 1, 'c': 2}, 
                           {'Prediction': {'prediction$1': 1, 'prediction$2': 2},'a': 1, 'b': 2, 'c': 3}, 
                           {'Prediction': {'prediction$1': 2, 'prediction$2': 3},'a': 2, 'b': 3, 'c': 4}, 
                           {'Prediction': {'prediction$1': 3, 'prediction$2': 4},'a': 3, 'b': 4, 'c': 5}, 
                           {'Prediction': {'prediction$1': 4, 'prediction$2': 5},'a': 4, 'b': 5, 'c': 6}
-                         ]
+                         ]]
         print ("#######")
         print('test_store1.get_final_data')
         print(test_store1.get_final_data())
@@ -361,12 +352,12 @@ class Test(unittest.TestCase):
         print(test_store1.get_postprocess_result())
         assert expected_result == test_store1.get_postprocess_result()
 
-        expected_final = [{'PredictionError': 'Missing mandatory input field: a','b': 6, 'c': 7}, 
+        expected_final = [[{'PredictionError': 'Missing mandatory input field: a','b': 6, 'c': 7}, 
                           {'Prediction': {'prediction$1': 6, 'prediction$2': 7},'a': 6, 'b': 7, 'c': 8}, 
                           {'Prediction': {'prediction$1': 7, 'prediction$2': 8},'a': 7, 'b': 8, 'c': 9}, 
                           {'PredictionError': 'Missing mandatory input field: a','c': 10}, 
                           {'Prediction': {'prediction$1': 9, 'prediction$2': 10},'a': 9, 'b': 10, 'c': 11}
-                         ]
+                         ]]
         
         print ("#######")
         print('test_store1.get_final_data with single output list')

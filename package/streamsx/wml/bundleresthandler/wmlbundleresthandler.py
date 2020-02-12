@@ -10,7 +10,7 @@ import logging
    
 tracer = logging.getLogger(__name__)   
 
-from streamsx.wml.bundleresthandler import BundleRestHandler   
+from .bundleresthandler import BundleRestHandler   
    
    
 _STREAMSX_MAPPING_ERROR_MISSING_MANDATORY = "Missing mandatory input field: "
@@ -22,6 +22,7 @@ class WmlBundleRestHandler(BundleRestHandler):
         super().__init__(storage_id)
         self._wml_client = wml_client
         self._deployment_guid = deployment_guid
+        
         
     def preprocess(self):
         """WML specific implementation,
@@ -169,17 +170,4 @@ class WmlBundleRestHandler(BundleRestHandler):
                 else:
                     self._result_list[data_index] = {"PredictionError": item["message"]}
                     
-            '''
-            for values in prediction['values']:
-                #get a complete dict with field,value for each prediction result
-                prediction_dict = dict(zip(prediction['fields'],values))
-                # and add it to the stored tuple in local list
-                self._result_list[index]['prediction']=prediction_dict
-                #submit the default topology tuple for raw Python objects
-                self.submit('result_port',{'__spl_po':memoryview(pickle.dumps(local_list[local_list_index]))})
-                local_list_index +=1
-                send_counter += local_list_index
-                tracer.debug("WMLOnlineScoring: Thread %d submitted now % and %d in sum tuples",thread_index, local_list_index, send_counter)
-            '''
-        
-        
+
