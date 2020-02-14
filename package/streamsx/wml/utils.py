@@ -5,7 +5,7 @@
 from watson_machine_learning_client import WatsonMachineLearningAPIClient
 
 
-def get_wml_credentials(token=None,url=None):
+def get_wml_credentials(token=None,url=None,version="3.0.0"):
     """Returns a credential object to be used for WML connection
     
     Arguments:
@@ -14,6 +14,9 @@ def get_wml_credentials(token=None,url=None):
              used at Streams runtime and no user credentials shall
              be needed resp. stored
              (default: users CPD token from Jupyter environment)
+    url -- url of the CPD cluster where WML is running
+    version -- version of the CPD cluster where WML is running
+               type str, defaults to "3.0.0"
                  
     Call it only in the notebook where the topology is created, not in Python
     code executed at Streams runtime.
@@ -30,7 +33,7 @@ def get_wml_credentials(token=None,url=None):
                    "url": url, # access the main CP4D proxy/the CP4D cluster root from internal side
                    "token": token,
                    "instance_id": "wml_local",
-                   "version" : "2.5.0"
+                   "version" : version
                   }
     #test client creation to fail already in notebook if there is something wrong
     #need object copy here as the function changes "instance_id" in the object and so it 

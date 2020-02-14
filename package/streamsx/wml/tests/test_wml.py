@@ -7,6 +7,7 @@ import streamsx.rest as sr
 import unittest
 import os
 import json
+import time
 import streamsx.wml as wml
 import streamsx.wml.utils as wml_utils
 from streamsx.wml.bundleresthandler.wmlbundleresthandler import WmlBundleRestHandler
@@ -17,6 +18,9 @@ import threading
 
 from watson_machine_learning_client import WatsonMachineLearningAPIClient
 
+###################################################################################
+# Read credentials from test environment
+###################################################################################
 def cloud_creds_env_var():
     result = {}
     try:
@@ -28,6 +32,50 @@ def cloud_creds_env_var():
 
 
 
+###################################################################################
+# Class used as output object in bundleresthandler tests 
+###################################################################################
+class output_class():
+    def __init__(self, output_object):
+        self._output_object = output_object
+    def __call__(self, output):
+        #with self._output_lock:
+        print ("################", str(output))
+
+
+###################################################################################
+# Class with callable as test source
+###################################################################################
+class TestSource:
+    def __init__(self, ):
+        pass
+    def __call__(self):
+            # run this indefinitely so that there will always be data for the view
+        counter = 0
+        while True:
+            counter += 1
+            #see if streaming source is loosing tuples 
+            if counter == 10001:
+                time.sleep(30)
+            record = {"petal_length":1.4,
+                       "petal_width":0.2,
+                       "sepal_length":5.1,
+                       "sepal_width":3.5,
+                       "number" : counter}
+            # generate errors
+            if counter % 20 == 0:
+                record.pop("petal_length",None)
+                record.pop("sepal_length",None)
+
+            #yield everytime same values, doesn't matter for test
+            yield record
+
+
+
+
+###################################################################################
+# UNIT TESTS
+###################################################################################
 class Test(unittest.TestCase):
 
     @classmethod
@@ -55,10 +103,6 @@ class Test(unittest.TestCase):
         return credentials
 
 
-    def _create_stream(self, topo):
-        """Create a stream of dicts, each having K/V for iris detection"""
-        s = topo.source([{"sepal_length" : 5.1 , "sepal_width" : 3.5 , "petal_length" : 1.4, "petal_width" : 0.2, "tuple_number": i} for i in range (10000)])
-        return s
 
     def test_score_bundle(self):
         print ('\n---------'+str(self))
@@ -78,7 +122,7 @@ class Test(unittest.TestCase):
 
         name = 'test_score_bundle'
         topo = Topology(name)
-        source_stream = self._create_stream(topo) 
+        source_stream = topo.source(TestSource())
         # stream of dicts is consumed by wml_online_scoring
         scorings,invalids = wml.wml_online_scoring(source_stream,
                                      '72a15621-5e2e-44b5-a245-6a0fabc5de1e',#'c764e524-0876-4e03-a6da-5f3bbc5e5482', #deployment_guid
@@ -89,7 +133,7 @@ class Test(unittest.TestCase):
                                      queue_size = 2000, 
                                      threads_per_node = 1)
 
-        print_stream = scorings.map(lambda t: print(str(t)))
+        #print_stream = scorings.map(lambda t: print(str(t)))
 
         scorings.publish(topic="ScoredRecords")
         invalids.publish(topic="InvalidRecords")
@@ -242,7 +286,8 @@ class Test(unittest.TestCase):
                 print ("type of callable attribute: ", type(x))
                 print (x)
 
-        WmlBundleRestHandler.output_function = print_out() #(lambda z,x: print(str( x)))
+        #WmlBundleRestHandler.output_function = print_out() #(lambda z,x: print(str( x)))
+        WmlBundleRestHandler.output_function = output_class(self)
         WmlBundleRestHandler.single_output = False
 
         print ("#######  complete sequence Test with only valid data #########")
@@ -390,7 +435,7 @@ class TestDistributed(Test):
         # setup test config
         self.test_config = {}
         self.test_config[ConfigParams.SSL_VERIFY] = False  
-        job_config = streamsx.topology.context.JobConfig(tracing='trace')
+        job_config = streamsx.topology.context.JobConfig(tracing='error')
         job_config.add(self.test_config)
 
     def _launch(self, topo):

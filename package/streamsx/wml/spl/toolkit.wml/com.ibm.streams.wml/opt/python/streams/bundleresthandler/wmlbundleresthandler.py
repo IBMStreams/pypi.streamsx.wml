@@ -141,7 +141,7 @@ class WmlBundleRestHandler(BundleRestHandler):
 
         tracer.debug("WMLOnlineScoring: Worker %d got %d predictions from WML model deployment!", self._storage_id, len(self._rest_response['predictions'][0]['values']))
     
-        return self._rest_response['predictions'] # number of prediction response bundles
+        return len(self._rest_response['predictions']) # number of prediction response bundles
         
 
     def postprocess(self):

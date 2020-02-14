@@ -18,6 +18,8 @@ class ProcessStorage stores
 - payload dividing depends ordered and unordered submission behavior
 
 '''   
+
+import time
    
 import logging
    
@@ -91,13 +93,13 @@ class BundleRestHandler():
         with self.input_list_lock:
             #determine size and copy max size or all to local data list
             input_size = len(self.source_data_list)
-            tracer.debug("ProcessStorage (%d) : source_data_list len before copy %d!", self._storage_id, input_size)
+            #tracer.debug("ProcessStorage (%d) : source_data_list len before copy %d!", self._storage_id, input_size)
             if input_size > 0:
                 end_index = int(self.max_copy_size) if input_size >= self.max_copy_size else input_size
                 self._data_list = self.source_data_list[:end_index]
                 del self.source_data_list[:end_index]
                 self._data_size = end_index 
-                tracer.debug("ProcessStorage (%d) :  read %d tuples from input queue with _data_list len %d!", self._storage_id, end_index, len(self._data_list))
+                #tracer.debug("ProcessStorage (%d) :  read %d tuples from input queue with _data_list len %d!", self._storage_id, end_index, len(self._data_list))
                 self._bundle_number = self.bundle_counter
                 self.bundle_counter += 1
     
@@ -105,7 +107,7 @@ class BundleRestHandler():
                 self._status_list = [{"mapping_success":False,"score_success":False,"message":None} for i in range(self._data_size)]
                 #create the result list at once
                 self._result_list = [None for i in range(self._data_size)]
-                tracer.debug("ProcessStorage (%d) : source_data_list len after copy %d!", self._storage_id, len(self.source_data_list))
+                #tracer.debug("ProcessStorage (%d) : source_data_list len after copy %d!", self._storage_id, len(self.source_data_list))
         return self._data_size                
         
     def get_final_data(self, single_list = True):
@@ -118,8 +120,8 @@ class BundleRestHandler():
             return [success_output, error_output]
     
     def write_result_to_output(self):
-        while self.next_bundle_to_sent is not self._bundle_number:
-            time.sleep(0.001)
+        while self.next_bundle_to_sent != self._bundle_number:
+            time.sleep(0.01)
         self.output_function(self.get_final_data(single_list = self.single_output))
         self.next_bundle_to_sent = self.next_bundle_to_sent + 1
     
