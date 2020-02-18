@@ -82,6 +82,7 @@ class BundleRestHandler():
 
     def copy_from_source(self):        
         self._data_size = 0
+        self._bundle_number = None
         self._data_list = []            # don't change this, this is the original data, filled by copy()
         self._status_list = []          # processing status of several steps, if one step is not successful, next are not done
                                         # will get same size as _data_list

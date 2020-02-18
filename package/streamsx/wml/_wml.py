@@ -31,7 +31,8 @@ def wml_online_scoring( stream,
                         expected_load = 1000, 
                         queue_size = 2000,  
                         threads_per_node = 2,
-                        single_output = False, 
+                        single_output = False,
+                        node_count = 1, 
                         connectionConfiguration=None, 
                         name = None):
     """
@@ -67,15 +68,23 @@ def wml_online_scoring( stream,
         single_output (bool, optional): 
             optional field to define if error data and success data should be send 
             to one output (stream) or to 2 different outputs (streams), defaults to False
+        node_count(int, optional):
+            optional field giving the number of REST nodes which share the load, defaults to 1
         name (str, optional): 
             Give the resulting Streams operator a name of your choice
         
     Returns:
         result_stream, error_stream(:py:class:`topology_ref:streamsx.topology.topology.Stream`, :py:class:`topology_ref:streamsx.topology.topology.Stream`):
-            Returns two streams for further processing
+            Returns streams for further processing depending on ''single_output'' setting.
+            ''single_output'' = False
+                - result_stream: Tuples as received on input extended by the scoring result field predictions of type dict
+                - error_stream : Tuples as received on input extended by the error indication `scoring_error` of type dict
+            ''single_output'' = True:
+                - result_stream: all Tuples as received on input, extended by the scoring result field ''prediction'' of type dict
+                  or by field ''prediction_error'' of type dict
             
-            - result_stream: Tuples as received on input extended by the scoring result field predictions of type dict
-            - error_stream : Tuples as received on input extended by the error indication `scoring_error` of type dict
+            
+            
             
     """
     # add private toolkit
@@ -125,13 +134,17 @@ def wml_online_scoring( stream,
                             queue_size = queue_size,  
                             threads_per_node = threads_per_node,
                             single_output = single_output, 
+                            node_count = node_count,
                             connectionConfiguration = connectionConfiguration, 
                             name = name)
 
     # calling SPL operators will result anytime in schema based output streams
     # these need to be mapped back to the Python object Stream we received
 
-    return _op.outputs[0],_op.outputs[1]
+    if single_output:
+        return _op.outputs[0]
+    else:
+        return _op.outputs[0],_op.outputs[1]
 
 
 
@@ -146,7 +159,8 @@ class _WMLOnlineScoring(streamsx.spl.op.Invoke):
                        expected_load, 
                        queue_size, 
                        threads_per_node,
-                       single_output, 
+                       single_output,
+                       node_count, 
                        connectionConfiguration, 
                        name):
 
@@ -164,6 +178,7 @@ class _WMLOnlineScoring(streamsx.spl.op.Invoke):
         params['queue_size'] = queue_size
         params['threads_per_node'] = threads_per_node
         params['single_output'] = single_output
+        params['node_count'] = node_count
 
         super(_WMLOnlineScoring, self).__init__(topology,kind,inputs,schemas,params,name)
 

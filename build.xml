@@ -17,6 +17,17 @@
 	</delete>
     </target>
 
+    <target name="build" depends="clean">
+        <copy todir="package/streamsx/wml/spl/toolkit.wml/com.ibm.streams.wml/opt/python/streams/bundleresthandler">
+            <fileset dir="package/streamsx/wml/bundleresthandler"/>
+        </copy>
+        <exec executable="spl-python-extract" failonerror="true" dir="${package}/streamsx/wml/spl/toolkit.wml/">
+            <arg value="-i" />
+            <arg value="com.ibm.streams.wml" />
+            <arg value="--make-toolkit" />
+        </exec>
+    </target>
+
     <target name="doc">
         <echo message="Generate html doc"/>
         <exec executable="make" failonerror="true" dir="${package}/docs">
@@ -26,7 +37,8 @@
         </exec>
     </target>
 
-   <target name="test" depends="clean">
+
+   <target name="test" depends="clean, build">
     <exec executable="/bin/sh" 
       outputproperty="toolkit.test.output" errorproperty="toolkit.test.error" resultproperty="toolkit.test.result"
       dir="${package}">
@@ -43,6 +55,25 @@
       </condition>
     </fail>
    </target>
+   
+    <target name="test-distributed" depends="clean, build">
+        <exec executable="/bin/sh" 
+          outputproperty="toolkit.test.output" errorproperty="toolkit.test.error" resultproperty="toolkit.test.result"
+          dir="${package}">
+          <arg value="-c"/>
+          <arg value="python3 -u -m unittest streamsx.wml.tests.test_wml.TestDistributed"/>
+        </exec>
+        <echo message="${toolkit.test.output}" if:set="toolkit.test.output"/>
+        <echo message="${toolkit.test.error}" if:set="toolkit.test.error"/>
+        <fail message="The test failed - result ${toolkit.test.result}.">
+          <condition>
+            <not>
+              <equals arg1="${toolkit.test.result}" arg2="0"/>
+            </not>
+          </condition>
+        </fail>
+    </target>
+
 
 
 </project>

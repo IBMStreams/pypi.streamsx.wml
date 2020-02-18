@@ -80,7 +80,8 @@ class WMLOnlineScoring(spl.PrimitiveOperator):
                        expected_load, 
                        queue_size, 
                        threads_per_node,
-                       single_output):
+                       single_output,
+                       node_count):
         """Instantiates a WMLOnlineScoring object at application runtime (Streams application runtime container).
         
         It creates a WML client connecting to WML service with provided credentials and
@@ -98,7 +99,7 @@ class WMLOnlineScoring(spl.PrimitiveOperator):
         self._max_queue_size = queue_size
         self._threads_per_node = threads_per_node
         self._single_output = single_output
-        self._node_count = 1
+        self._node_count = node_count
         self._max_request_size = 10 if expected_load is None else int(expected_load/self._threads_per_node/self._node_count)
         self._input_queue = list([])
         self._sending_threads = []
@@ -111,7 +112,7 @@ class WMLOnlineScoring(spl.PrimitiveOperator):
         WmlBundleRestHandler.input_list_lock = self._lock
         WmlBundleRestHandler.source_data_list = self._input_queue
         WmlBundleRestHandler.field_mapping = self._field_mapping
-        WmlBundleRestHandler.output_function = output_class(self) #(lambda z,x: print(str( x)))
+        WmlBundleRestHandler.output_function = output_class(self) 
         WmlBundleRestHandler.single_output = self._single_output
         
         tracer.debug("__init__ finished")
@@ -175,7 +176,7 @@ class WMLOnlineScoring(spl.PrimitiveOperator):
         send_counter = 0
         #as long as thread shall not stop
         while self._sending_threads[thread_index]['run']:
-            tracer.debug("Thread %d in loop received %d tuples.", thread_index,tuple_counter )
+            #tracer.debug("Thread %d in loop received %d tuples.", thread_index,tuple_counter )
             if  wml_bundle_handler.copy_from_source() > 0:
                 wml_bundle_handler.preprocess()
                 wml_bundle_handler.synch_rest_call()
@@ -248,85 +249,5 @@ class WMLOnlineScoring(spl.PrimitiveOperator):
         for thread_control in self._sending_threads:
             thread_control['thread'].join()
             tracer.debug("Thread %d joined.", thread_control['index'])
-
-    
-
-
-
-
-
-
-
-
-
-
-    # try to get the wml connection credential dictionary
-    # "apikey","url","instance_id"
-    # 1. check if input is json and has matching attributes
-    #    "apikey","url","instance_id"
-    # 2. check if input is Streams application configuration name
-    #     2.1 check if all required single properties are provided
-    #         "apikey","url","instance_id"
-    #     2.2 check if "jsonCredentials" property is provided 
-    #         and has all attributes 
-    #         "apikey","url","instance_id"
-    def _get_wml_connection_config(self, connection_config):
-    
-        #filter for dictionary, app config may include more parameter than we need
-        wml_keys = ["apikey","url","instance_id"]
-        wml_json_key = "jsonCredentials"
-        config_dict=None
-        
-
-        if not connection_config:
-            return None
-
-
-        # 1. check if input is a JSON string
-        tracer.info("Check if parameter connectionConfiguration is a JSON string")
-        try: 
-            config_dict = json.loads(connection_config)
-        except:
-            config_dict = None
-           
-        # valid JSON!
-        if config_dict:
-            tracer.info("Parameter connectionConfiguration is a JSON string, check content")
-            if all (k in config_dict for k in wml_keys):
-                #check that all have values
-                if all (config_dict[k]!=None for k in wml_keys):
-                    return {k:config_dict[k] for k in wml_keys}            
-                    
-        # no valid JSON,  possibly applicationConfiguration?
-        else:
-            tracer.info("parameter connectionConfiguration is no JSON string, check if it is AppConfig name")
-            config_dict=get_application_configuration(connection_config)
-            
-            if config_dict:
-                # 2.1 check all single properties provided
-                tracer.info("Try to read separate credential parameters from AppConfig")
-                if all (k in config_dict for k in wml_keys):
-                    #check that all have values
-                    if all (config_dict[k]!=None for k in wml_keys):
-                        return {k:config_dict[k] for k in wml_keys}
-                        
-                # 2.2 check on jsonCredentials property
-                tracer.info("Try to read single jsonCredentials parameter from AppConfig")
-                if wml_json_key in config_dict:
-                    json_config = None
-                    try: 
-                        json_config = json.loads(config_dict[wml_json_key])
-                    except:
-                        tracer.info("Could not load jsonCredentials from AppConfig")
-                        json_config = None
-                    if json_config:
-                        if all (k in json_config for k in wml_keys):
-                            #check that all have values
-                            if all (json_config[k]!=None for k in wml_keys):
-                                return {k:json_config[k] for k in wml_keys}            
-                                
-        tracer.error("Could not get valid WML connection config from: " + config_name + ".")
-        return None
-
 
 
