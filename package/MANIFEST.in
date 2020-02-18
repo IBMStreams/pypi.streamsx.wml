@@ -1,3 +1,6 @@
 include streamsx/wml/spl/toolkit.wml/com.ibm.streams.wml/opt/python/streams/wml_online_scoring.py
+include streamsx/wml/spl/toolkit.wml/com.ibm.streams.wml/opt/python/streams/bundleresthandler/bundleresthandler.py
+include streamsx/wml/spl/toolkit.wml/com.ibm.streams.wml/opt/python/streams/bundleresthandler/wmlbundleresthandler.py
+include streamsx/wml/spl/toolkit.wml/com.ibm.streams.wml/opt/python/streams/wml_online_scoring.py
 include streamsx/wml/spl/toolkit.wml/com.ibm.streams.wml/opt/python/streams/requirements.txt
 include streamsx/wml/spl/toolkit.wml/com.ibm.streams.wml/info.xml
