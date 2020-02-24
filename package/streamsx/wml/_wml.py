@@ -76,12 +76,15 @@ def wml_online_scoring( stream,
     Returns:
         result_stream, error_stream(:py:class:`topology_ref:streamsx.topology.topology.Stream`, :py:class:`topology_ref:streamsx.topology.topology.Stream`):
             Returns streams for further processing depending on ''single_output'' setting.
-            ''single_output'' = False
-                - result_stream: Tuples as received on input extended by the scoring result field predictions of type dict
-                - error_stream : Tuples as received on input extended by the error indication `scoring_error` of type dict
-            ''single_output'' = True:
-                - result_stream: all Tuples as received on input, extended by the scoring result field ''prediction'' of type dict
-                  or by field ''prediction_error'' of type dict
+            
+        ''single_output'' = False
+            :result_stream: Tuples as received on input extended by the scoring result field predictions of type dict
+            
+            :error_stream: Tuples as received on input extended by the error indication `scoring_error` of type dict
+            
+        ''single_output'' = True:
+            :result_stream: all Tuples as received on input, extended by the scoring result field ''prediction'' of type dict
+                                or by field ''prediction_error'' of type dict
             
             
             

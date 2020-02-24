@@ -35,7 +35,7 @@ Quick ref to use this package
    You create a deployment by choosing a stored model ID and the type of deployment. Again you can do it 
    via CP4D GUI as context specific action on a shown model or via Python API e.g. in a notebook.
    You will get information about the progress and the final state of the deployment creation.
-   AN WML online scoring deployment is a REST endpoint to which you send (https request) your input data and get scoring results
+   An WML online scoring deployment is a REST endpoint to which you send (https request) your input data and get scoring results
    back as response.
    
        `CPD 2.5.0: Store and deploy models <https://www.ibm.com/support/knowledgecenter/SSQNUZ_2.5.0/wsj/wmls/wmls-deploy-python.html>`_
