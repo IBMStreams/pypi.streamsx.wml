@@ -17,12 +17,16 @@ _STREAMSX_MAPPING_ERROR_MISSING_MANDATORY = "Missing mandatory input field: "
    
 class WmlBundleRestHandler(BundleRestHandler):
 
-    def __init__(self,storage_id, wml_client, deployment_guid):
-
-        super().__init__(storage_id)
-        self._wml_client = wml_client
-        self._deployment_guid = deployment_guid
+    ########################################
+    # public controllable class varibales
+    ########################################
+    wml_client = None
+    deployment_guid = None
         
+        
+    def __init__(self,handler_index):
+        super().__init__(handler_index)
+
         
     def preprocess(self):
         """WML specific implementation,
@@ -95,7 +99,7 @@ class WmlBundleRestHandler(BundleRestHandler):
         
         try:
             if len(self._payload_list) > 0:
-                self._rest_response = self._wml_client.deployments.score(self._deployment_guid,meta_props={'input_data':self._payload_list})
+                self._rest_response = self.wml_client.deployments.score(self.deployment_guid,meta_props={'input_data':self._payload_list})
         except wml_client_error.ApiRequestFailure as err:
             """REST request returns 
             400 incase something with the value of 'input_data' is not correct
@@ -139,7 +143,7 @@ class WmlBundleRestHandler(BundleRestHandler):
                 if item["message"] is None:
                     item["message"] = "WML API error: " + error_message
 
-        tracer.debug("WMLOnlineScoring: Worker %d got %d predictions from WML model deployment!", self._storage_id, len(self._rest_response['predictions'][0]['values']))
+        tracer.debug("WMLOnlineScoring: Worker %d got %d predictions from WML model deployment!", self._handler_index, len(self._rest_response['predictions'][0]['values']))
     
         return len(self._rest_response['predictions']) # number of prediction response bundles
         

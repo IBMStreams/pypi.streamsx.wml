@@ -173,23 +173,8 @@ class Test(unittest.TestCase):
         
     def test_WmlBundleRestHandler_preprocess(self):
 
-        # list of 10 valid tuples
-        source_list = [{"a":i, "b": i+1, "c": i+2} for i in range(10)]
-
-        #set class variables
-        WmlBundleRestHandler.max_copy_size = 5
-        lock = threading.Lock()
-        WmlBundleRestHandler.input_list_lock = lock
-        WmlBundleRestHandler.field_mapping=[{"model_field":"a_",
-                                       "tuple_field":"a"},
-                                      {"model_field":"b_",
-                                       "tuple_field":"b"}                                       
-                                     ]
-        WmlBundleRestHandler.source_data_list = source_list
-        WmlBundleRestHandler.output_function = (lambda x: print("->->->", str( x)))
-        
         #functionally not needed in this testcase but needed for compilation
-        class wml_client_class ():
+        class wml_client_stub ():
             class deployments_():
                 def score(self,deployment_id, **meta_props):
                     if len(meta_props["meta_props"]["input_data"][0]["values"]) is 5:
@@ -197,11 +182,30 @@ class Test(unittest.TestCase):
                     else:
                         return {'predictions': [{'fields': ['prediction$1', 'prediction$2'], 'values': [[6, 7], [7, 8], [9, 10]]}]}
             deployments = deployments_()      
-                        
-        test_client = wml_client_class
 
+
+        # list of 10 valid tuples
+        source_list = [{"a":i, "b": i+1, "c": i+2} for i in range(10)]
+
+        ###################################################
+        #initialize the handler class
+        ###################################################
+        #set base classes class variables
+        WmlBundleRestHandler.max_copy_size = 5
+        lock = threading.Lock()
+        WmlBundleRestHandler.input_list_lock = lock
+        WmlBundleRestHandler.source_data_list = source_list
+        WmlBundleRestHandler.single_output = False
+        WmlBundleRestHandler.field_mapping=[{"model_field":"a_",
+                                             "tuple_field":"a"},
+                                            {"model_field":"b_",
+                                             "tuple_field":"b"}]
+        WmlBundleRestHandler.output_function = (lambda x: print("->->->", str( x)))
+        #set WML sub classes class variables
+        WmlBundleRestHandler._wml_client = wml_client_stub
+        WmlBundleRestHandler._deployment = "deploymentid"
         
-        test_store1 = WmlBundleRestHandler(1,test_client,"deploymentid")
+        test_store1 = WmlBundleRestHandler(1)
         test_store1.copy_from_source()
         test_store1.preprocess()
         expected_payload = [{'fields': ['a_', 'b_'], 'values': [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5]]}]
@@ -210,7 +214,7 @@ class Test(unittest.TestCase):
         
         assert len(source_list) == 5
         
-        test_store2 = WmlBundleRestHandler(2,test_client,"deploymentid")
+        test_store2 = WmlBundleRestHandler(2)
         test_store2.copy_from_source()
         test_store2.preprocess()
         expected_payload = [{'fields': ['a_', 'b_'], 'values': [[5, 6], [6, 7], [7, 8], [8, 9], [9, 10]]}]
@@ -230,7 +234,7 @@ class Test(unittest.TestCase):
 
         WmlBundleRestHandler.source_data_list = source_list
 
-        test_store1 = WmlBundleRestHandler(1, test_client,"deploymentid")
+        test_store1 = WmlBundleRestHandler(1)
         test_store1.copy_from_source()
         test_store1.preprocess()
         expected_payload = [{'fields': ['a_', 'b_'], 'values': [[0, 1], [1, 2], [3, 4]]}]
@@ -246,7 +250,7 @@ class Test(unittest.TestCase):
         
         assert len(source_list) == 5
         
-        test_store2 = WmlBundleRestHandler(2, test_client,"deploymentid")
+        test_store2 = WmlBundleRestHandler(2)
         test_store2.copy_from_source()
         test_store2.preprocess()
         expected_payload = [{'fields': ['a_', 'b_'], 'values': [[5, 6], [6, 7], [7, 8], [9, 10]]}]
@@ -265,36 +269,9 @@ class Test(unittest.TestCase):
 
     def test_WmlBundleRestHandler_synch_rest_call(self):
 
-        # list of 10 tuples, 5 valid + 5 mixed
-        source_list = [{"a":i, "b": i+1, "c": i+2} for i in range(10)]
-        source_list[5].pop("a")
-        source_list[8].pop("b")
-        source_list[8].pop("a")
-
-
-        #set class variables
-        WmlBundleRestHandler.max_copy_size = 5
-        lock = threading.Lock()
-        WmlBundleRestHandler.input_list_lock = lock
-        WmlBundleRestHandler.field_mapping=[{"model_field":"a_", "tuple_field":"a"},
-                                            {"model_field":"b_", "tuple_field":"b"}                                       
-                                           ]
-        WmlBundleRestHandler.source_data_list = source_list
-
-        class print_out():
-            def __call__(self,x):
-                print ("type of callable attribute: ", type(x))
-                print (x)
-
-        #WmlBundleRestHandler.output_function = print_out() #(lambda z,x: print(str( x)))
-        WmlBundleRestHandler.output_function = output_class(self)
-        WmlBundleRestHandler.single_output = False
-
-        print ("#######  complete sequence Test with only valid data #########")
-
         # this test case needs a mockup of the wml api call wml_clien.deployments.score()
         # to be injected to class as loopback generating just what is expected
-        class wml_client_class ():
+        class wml_client_stub ():
             class deployments_():
                 def score(self,deployment_id, **meta_props):
                     if len(meta_props["meta_props"]["input_data"][0]["values"]) is 5:
@@ -302,10 +279,33 @@ class Test(unittest.TestCase):
                     else:
                         return {'predictions': [{'fields': ['prediction$1', 'prediction$2'], 'values': [[6, 7], [7, 8], [9, 10]]}]}
             deployments = deployments_()      
-                        
-        test_client = wml_client_class
 
-        test_store1 = WmlBundleRestHandler(1, test_client,"deploymentid")
+        # list of 10 tuples, 5 valid + 5 mixed
+        source_list = [{"a":i, "b": i+1, "c": i+2} for i in range(10)]
+        source_list[5].pop("a")
+        source_list[8].pop("b")
+        source_list[8].pop("a")
+
+        ###################################################
+        #initialize the handler class
+        ###################################################
+        #set handler base classes class variables
+        WmlBundleRestHandler.max_copy_size = 5
+        lock = threading.Lock()
+        WmlBundleRestHandler.input_list_lock = lock
+        WmlBundleRestHandler.source_data_list = source_list
+        WmlBundleRestHandler.single_output = False
+        WmlBundleRestHandler.field_mapping=[{"model_field":"a_", "tuple_field":"a"},
+                                            {"model_field":"b_", "tuple_field":"b"}]                                      
+        WmlBundleRestHandler.output_function = output_class(self)
+        #set WML handler sub classes class variables
+        WmlBundleRestHandler.wml_client = wml_client_stub
+        WmlBundleRestHandler.deployment_guid = "deploymentid"
+
+
+        print ("#######  complete sequence Test with only valid data #########")
+                        
+        test_store1 = WmlBundleRestHandler(1)
         test_store1.copy_from_source()
         test_store1.preprocess()
         test_store1.synch_rest_call()
@@ -359,7 +359,7 @@ class Test(unittest.TestCase):
 
         print ("#######  complete sequence Test with errorneous data #########")
         # second bundle of size 5 with some errors
-        test_store1 = WmlBundleRestHandler(1, test_client,"deploymentid")
+        test_store1 = WmlBundleRestHandler(1)
         test_store1.copy_from_source()
         test_store1.preprocess()
         test_store1.synch_rest_call()
