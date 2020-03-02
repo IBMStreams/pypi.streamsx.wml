@@ -51,6 +51,9 @@ class WmlBundleRestHandler(BundleRestHandler):
         # keep this assert as long as we don't support optional fields
         assert self.allow_optional_fields is False
         
+        
+        tracer.debug("preprocess mapping: %s", self.field_mapping)
+        
         # clear payload list
         self._payload_list = []
         
@@ -60,6 +63,9 @@ class WmlBundleRestHandler(BundleRestHandler):
             tuple_fields = []
             tuple_is_valid = True
             for field in self.field_mapping:
+                tracer.debug("preprocess mapping: %s",str(field))
+                tracer.debug("preprocess tuple 0: %s",str(_tuple))
+        
                 if field['tuple_field'] in _tuple and _tuple[field['tuple_field']] is not None:
                     tuple_values.append(_tuple[field['tuple_field']])
                     tuple_fields.append(field['model_field'])
@@ -100,7 +106,7 @@ class WmlBundleRestHandler(BundleRestHandler):
         try:
             if len(self._payload_list) > 0:
                 self._rest_response = self.wml_client.deployments.score(self.deployment_guid,meta_props={'input_data':self._payload_list})
-        except wml_client_error.ApiRequestFailure as err:
+        except ApiRequestFailure as err:
             """REST request returns 
             400 incase something with the value of 'input_data' is not correct
             404 if the deployment GUID doesn't exists as REST endpoint

@@ -109,7 +109,7 @@ class BundleRestHandler():
         #as long as thread shall not stop
         while self._run:
             bundle_tuple_count = self.copy_from_source()
-            #tracer.debug("Thread %d in loop received %d tuples.", self._handler_index, bundle_tuple_count )
+            tracer.debug("Loop: Thread %d received %d tuples.", self._handler_index, bundle_tuple_count )
             if  bundle_tuple_count > 0:
                 self.preprocess()
                 self.synch_rest_call()
@@ -157,7 +157,7 @@ class BundleRestHandler():
                 self._status_list = [{"mapping_success":False,"score_success":False,"message":None} for i in range(self._data_size)]
                 #create the result list at once
                 self._result_list = [None for i in range(self._data_size)]
-                #tracer.debug("ProcessStorage (%d) : source_data_list len after copy %d!", self._handler_index, len(self.source_data_list))
+                tracer.debug("ProcessStorage (%d) : source_data_list len after copy %d!", self._handler_index, len(self.source_data_list))
         return self._data_size                
         
     def get_final_data(self, single_list = True):

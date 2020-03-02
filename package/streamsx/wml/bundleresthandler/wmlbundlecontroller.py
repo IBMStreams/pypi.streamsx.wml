@@ -59,8 +59,7 @@ class WmlBundleController(BundleController):
         # the handler base class class variables are set by
         # our own base class
         ######################################################
-        tracer.debug("Queuesize: ", self._handler_class.queue_size)
-        tracer.debug("Handler class: ", self._handler_class)
+        #tracer.debug("Handler class: ", self._handler_class)
         self._handler_class.wml_client = self._create_wml_client()
         self._handler_class.deployment_guid = self._deployment_guid 
 

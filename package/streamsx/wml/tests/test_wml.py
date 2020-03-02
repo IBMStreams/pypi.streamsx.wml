@@ -103,32 +103,37 @@ class Test(unittest.TestCase):
         return credentials
 
 
-
+    #########################################################################
+    # Test the complete ooperator in a topology application
+    #
+    # actually there is no stop criteria, neither in application
+    # nor externally
+    #########################################################################
     def test_score_bundle(self):
         print ('\n---------'+str(self))
 
-        field_mapping =[{"model_field":"Sepal.Length",
-                            "is_mandatory":True,
-                            "tuple_field":"sepal_length"},
-                           {"model_field":"Sepal.Width",
-                            "is_mandatory":True,
-                            "tuple_field":"sepal_width"},
-                           {"model_field":"Petal.Length",
-                            "is_mandatory":True,
-                            "tuple_field":"petal_length"},
-                           {"model_field":"Petal.Width",
-                            "is_mandatory":True,
-                            "tuple_field":"petal_width"}]
+        field_mapping =[{'model_field':'Sepal.Length',
+                            'is_mandatory':True,
+                            'tuple_field':'sepal_length'},
+                           {'model_field':'Sepal.Width',
+                            'is_mandatory':True,
+                            'tuple_field':'sepal_width'},
+                           {'model_field':'Petal.Length',
+                            'is_mandatory':True,
+                            'tuple_field':'petal_length'},
+                           {'model_field':'Petal.Width',
+                            'is_mandatory':True,
+                            'tuple_field':'petal_width'}]
 
         name = 'test_score_bundle'
         topo = Topology(name)
         source_stream = topo.source(TestSource())
         # stream of dicts is consumed by wml_online_scoring
         scorings,invalids = wml.wml_online_scoring(source_stream,
-                                     '72a15621-5e2e-44b5-a245-6a0fabc5de1e',#'c764e524-0876-4e03-a6da-5f3bbc5e5482', #deployment_guid
+                                     '9cffe75d-ae10-4980-a2c4-d25e1c453fa7',#'c764e524-0876-4e03-a6da-5f3bbc5e5482', #deployment_guid
                                      field_mapping, 
                                      json.loads(cloud_creds_env_var()), #wml_credentials,
-                                     'e34d2846-cc27-4e8a-80af-3d0f7021d0cb',#'1fb6550c-b22a-4a90-93fc-458ec048662e',
+                                     'e5e9ad46-0acf-4261-a9c1-255b2ce9c148',#'1fb6550c-b22a-4a90-93fc-458ec048662e',
                                      expected_load = 1000,
                                      queue_size = 2000, 
                                      threads_per_node = 1)
@@ -146,6 +151,13 @@ class Test(unittest.TestCase):
             self._build_only(name, topo)
             
             
+    #########################################################################
+    # Test the bundleresthandler base class
+    # - copy N (configured) tuples from global queue
+    # - check the global queue size after two copies of 
+    #   different handlers 
+    # 
+    #########################################################################
     def test_BundleRestHandler_copy(self):
 
         #create instance by copying from a source_list
@@ -171,6 +183,15 @@ class Test(unittest.TestCase):
         print ("local_list 2: ", test_store2._data_list)
         assert len(source_list) == 4
         
+
+
+    #########################################################################
+    # Test the mapping of the wml bundleresthandler
+    # a specialized bundleresthandler class
+    # - test preprocess() implementation: the mapping functionality
+    #   for valid input tuples as well as invalid ones
+    # - get the result and check it with expected
+    #########################################################################
     def test_WmlBundleRestHandler_preprocess(self):
 
         #functionally not needed in this testcase but needed for compilation
@@ -202,8 +223,8 @@ class Test(unittest.TestCase):
                                              "tuple_field":"b"}]
         WmlBundleRestHandler.output_function = (lambda x: print("->->->", str( x)))
         #set WML sub classes class variables
-        WmlBundleRestHandler._wml_client = wml_client_stub
-        WmlBundleRestHandler._deployment = "deploymentid"
+        WmlBundleRestHandler.wml_client = wml_client_stub
+        WmlBundleRestHandler.deployment = "deploymentid"
         
         test_store1 = WmlBundleRestHandler(1)
         test_store1.copy_from_source()
@@ -266,7 +287,19 @@ class Test(unittest.TestCase):
         assert len(source_list) == 0
 
 
-
+    #########################################################################
+    # Test the WML bundleresthandler class and underlying base class
+    #
+    # Test the complete sequence of processing steps
+    # - copy_from_source() -> don't check as tested before
+    # - preprocess()       -> don't check as tested before
+    # - sync_rest_call() -> use a WML client stub delivering certain result
+    #                       use valid and invalid data tuples
+    #                       check content of response delivered to handler
+    # - postprocess()    -> check the generated results in result_list
+    # - get_final_data() -> check the generated final tuple
+    #                       original data extended with REST-result/error
+    #########################################################################
     def test_WmlBundleRestHandler_synch_rest_call(self):
 
         # this test case needs a mockup of the wml api call wml_clien.deployments.score()

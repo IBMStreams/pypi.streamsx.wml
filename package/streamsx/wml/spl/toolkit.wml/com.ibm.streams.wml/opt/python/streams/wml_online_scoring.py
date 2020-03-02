@@ -54,11 +54,8 @@ class output_class():
                 for list_element in result_list:
                     self._output_object.submit('result_port',{'__spl_po':memoryview(pickle.dumps(list_element))})
             elif index == 1:
-                if not self._output_object._single_output:
-                    for list_element in result_list:
-                        self._output_object.submit('error_port',{'__spl_po':memoryview(pickle.dumps(list_element))})
-                else:
-                    tracer.error("Internal error: Single output configured but error_list generated. ")
+                for list_element in result_list:
+                    self._output_object.submit('error_port',{'__spl_po':memoryview(pickle.dumps(list_element))})
             else:
                 tracer.error("Internal error: More result lists generated than supported. ")
 
@@ -110,6 +107,10 @@ class WMLOnlineScoring(spl.PrimitiveOperator):
                         space_guid = space_guid
                         ) 
 
+
+        # type of input stream, set with first received tuple
+        self._is_python_object_stream = None
+
         tracer.debug("__init__ finished")
         return
         
@@ -133,8 +134,9 @@ class WMLOnlineScoring(spl.PrimitiveOperator):
         The tuple will be given to a controller which may
         block and force backpressure on the up-stream.
         """
-        # Input is a single value python tuple. This value is the pickeled original tuple
-        # from topology.
+        # python_tuple is either a k/v element with key '__spl_po' indicating that the content v is a pickled Python dictionary.
+        # Or python_tuple is a dictionary containing the k/v representation of a structured schema
+        # (nameTuple or SPL schema). 
         # So we need to load it back in an object with pickle.load(<class byte>) from memoryview
         # we receive here as the pickled python object is put in a SPL tuple <blob __spl_po> and
         # SPL type blob is on Python side a memoryview object
@@ -142,7 +144,20 @@ class WMLOnlineScoring(spl.PrimitiveOperator):
         # we have control over this SPL tuple and define it to have single attribute being a blob 
         # the blob is filled from topology side with a python dict as we want to work on a dict
         # as most comfortable also when having no defined attribute sequence anymore
-        input_tuple = pickle.loads(python_tuple['__spl_po'].tobytes())
+
+        input_tuple=None
+        if self._is_python_object_stream is True:
+            input_tuple = pickle.loads(python_tuple['__spl_po'].tobytes())
+        elif self._is_python_object_stream is False:
+            input_tuple = python_tuple
+        # only entered at first tuple, next time only the above two are checked
+        elif "__spl_po" in python_tuple:
+            input_tuple = pickle.loads(python_tuple['__spl_po'].tobytes())
+            self._is_python_object_stream = True
+        else:
+            input_tuple = python_tuple
+            self._is_python_object_stream = False
+            
         # controller.process can block calling thread here until input_tuple can be stored 
         self._controller.process_data(input_tuple)
 

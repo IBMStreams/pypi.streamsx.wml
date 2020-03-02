@@ -77,7 +77,7 @@ class BundleController():
         self._handler_class.input_list_lock = self._lock
         self._handler_class.source_data_list = self._input_queue
         self._handler_class.single_output = self._single_output
-        self._handler_class.field_mapping = field_mapping
+        self._handler_class.field_mapping = json.loads(field_mapping)
         self._handler_class.output_function = output_function
 
         tracer.debug("__init__ finished")
@@ -100,16 +100,16 @@ class BundleController():
             self._input_queue.append(input_data)
 
 
-    def prepare():
+    def prepare(self):
         self._create_sending_threads()
     
-    def run():
+    def run(self):
         self._start_sending_threads()
         
-    def stop():
+    def stop(self):
         self._end_sending_threads()
 
-    def finish():
+    def finish(self):
         self._join_sending_threads()
 
     def _change_thread_number(self,delta):
