@@ -109,7 +109,7 @@ class Test(unittest.TestCase):
     # actually there is no stop criteria, neither in application
     # nor externally
     #########################################################################
-    def test_score_bundle(self):
+    def _test_score_bundle(self):
         print ('\n---------'+str(self))
 
         field_mapping =[{'model_field':'Sepal.Length',
@@ -336,7 +336,7 @@ class Test(unittest.TestCase):
         WmlBundleRestHandler.deployment_guid = "deploymentid"
 
 
-        print ("#######  complete sequence Test with only valid data #########")
+        print ("0 #######  complete sequence Test with only valid data #########")
                         
         test_store1 = WmlBundleRestHandler(1)
         test_store1.copy_from_source()
@@ -345,7 +345,7 @@ class Test(unittest.TestCase):
         
         expected_response = {'predictions': [{'fields': ['prediction$1', 'prediction$2'], 'values': [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5]]}]}
         print ("#######")
-        print('test_store1.get_rest_response')
+        print('1 test_store1.get_rest_response')
         print(test_store1.get_rest_response())
         assert expected_response == test_store1.get_rest_response()
 
@@ -356,7 +356,7 @@ class Test(unittest.TestCase):
                            {'mapping_success': True, 'score_success': True, 'message': None}
                           ]
         print ("#######")
-        print('test_store1.get_rest_status')
+        print('2 test_store1.get_rest_status')
         print(test_store1.get_status())
         assert expected_status == test_store1.get_status()
         
@@ -369,7 +369,7 @@ class Test(unittest.TestCase):
                            {'Prediction': {'prediction$1': 4, 'prediction$2': 5}}
                           ]
         print ("#######")
-        print('test_store1.get_postprocess_result')
+        print('3 test_store1.get_postprocess_result')
         print(test_store1.get_postprocess_result())
         assert expected_result == test_store1.get_postprocess_result()
 
@@ -380,10 +380,10 @@ class Test(unittest.TestCase):
                           {'Prediction': {'prediction$1': 4, 'prediction$2': 5},'a': 4, 'b': 5, 'c': 6}
                          ]]
         print ("#######")
-        print('test_store1.get_final_data')
+        print('4 test_store1.get_final_data')
         print(test_store1.get_final_data())
         assert expected_final == test_store1.get_final_data()
-        print ("####### output function call")
+        print ("#######  5 output function call")
         test_store1.write_result_to_output()
         print ("#######")
         
@@ -400,7 +400,7 @@ class Test(unittest.TestCase):
         expected_response = {'predictions': [{'fields': ['prediction$1', 'prediction$2'], 
                                               'values': [[6, 7], [7, 8], [9, 10]]}]}
         print ("#######")
-        print('test_store1.get_rest_response')
+        print('6 test_store1.get_rest_response')
         print(test_store1.get_rest_response())
         assert expected_response == test_store1.get_rest_response()
 
@@ -412,7 +412,7 @@ class Test(unittest.TestCase):
                           ]
 
         print ("#######")
-        print('test_store1.get_rest_status')
+        print('7 test_store1.get_rest_status')
         print(test_store1.get_status())
         assert expected_status == test_store1.get_status()
         
@@ -426,7 +426,7 @@ class Test(unittest.TestCase):
                           ]
 
         print ("#######")
-        print('test_store1.get_postprocess_result')
+        print('8 test_store1.get_postprocess_result')
         print(test_store1.get_postprocess_result())
         assert expected_result == test_store1.get_postprocess_result()
 
@@ -438,7 +438,7 @@ class Test(unittest.TestCase):
                          ]]
         
         print ("#######")
-        print('test_store1.get_final_data with single output list')
+        print('9 test_store1.get_final_data with single output list')
         print(test_store1.get_final_data())
         assert expected_final == test_store1.get_final_data()
 
@@ -452,12 +452,12 @@ class Test(unittest.TestCase):
                          ]
         
         print ("#######")
-        print('test_store1.get_final_data with two output lists')
+        print('10 test_store1.get_final_data with two output lists')
         success,error = test_store1.get_final_data( single_list=False)
         print ("#######")
         assert expected_success == success
         assert expected_error == error
-        print ("####### output function call")
+        print ("####### 11 output function call")
         test_store1.write_result_to_output()
         print ("#######")
         

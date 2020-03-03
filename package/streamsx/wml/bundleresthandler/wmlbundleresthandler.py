@@ -7,13 +7,14 @@ from watson_machine_learning_client import WatsonMachineLearningAPIClient
 from watson_machine_learning_client.wml_client_error import ApiRequestFailure
 
 import logging
-   
+import numpy   
 tracer = logging.getLogger(__name__)   
+logger = logging.getLogger("com.ibm.streams.log")   
 
 from .bundleresthandler import BundleRestHandler   
    
    
-_STREAMSX_MAPPING_ERROR_MISSING_MANDATORY = "Missing mandatory input field: "
+_STREAMSX_MAPPING_ERROR_ = "Mapping error for input field: "
    
 class WmlBundleRestHandler(BundleRestHandler):
 
@@ -41,6 +42,23 @@ class WmlBundleRestHandler(BundleRestHandler):
         "values" is a 2 dimensional list of multiple scoring data sets, where each set is a list of ordered field values 
         [{"fields": ['field1_name', 'field2_name', 'field3_name', 'field4_name'], 
         "values": [[value1, value2, value3, value4],[value1, value2,  value3, value4]]}]
+
+        In case of a single_array_only input there may be no "fields" infomation needed, as the position in array 
+        is sufficient.
+        
+        To indicate from application side that there is no field mapping necessary, the special mapping
+        element [{"model_field":"__array__","tuple_field":"<name_of_tuple_field>"}]  is defined.
+        This mapping has to be the only one, additional other mapping entries are not valid.
+        The type of the tuple_field can be List, numpy.ndarray or pandas.DataFrame. 
+        numpy.ndarray and pandas.DataFrame have to be converted to List. (may be changed in future 
+        so that the wml client will do conversation.)
+        Actually our implementation has to take care for a single line numpy.ndarray as scoring input.
+        
+        We don't support:
+        - multi dimensional ndarray as scoring input for a single tuple
+        - pandas.DataFrame as scoring for a single tuple
+          DF are used commonly as column labeled two dimensional tabular data, which doesn't match
+          single tuple input scenario but batch input scenario which we don't support.
         
         In case of invalid scoring input WML online scoring will reject the whole bundle with "invalid input" 
         reason without indicating which of the many inputs was wrong!!!
@@ -51,52 +69,101 @@ class WmlBundleRestHandler(BundleRestHandler):
         # keep this assert as long as we don't support optional fields
         assert self.allow_optional_fields is False
         
-        
-        tracer.debug("preprocess mapping: %s", self.field_mapping)
-        
         # clear payload list
-        self._payload_list = []
-        
+        self._payload_list = []      
         actual_input_combination ={'fields':[],'values':[]}
+        
         for index,_tuple in enumerate(self._data_list):
+            ###################################
+            # field names and values from tuple
+            # handling fields names is already preparation
+            # for optional field support and resulting
+            # different payload content
+            ###################################
             tuple_values = []
             tuple_fields = []
+            tuple_error = ""
             tuple_is_valid = True
             for field in self.field_mapping:
-                tracer.debug("preprocess mapping: %s",str(field))
-                tracer.debug("preprocess tuple 0: %s",str(_tuple))
-        
                 if field['tuple_field'] in _tuple and _tuple[field['tuple_field']] is not None:
-                    tuple_values.append(_tuple[field['tuple_field']])
-                    tuple_fields.append(field['model_field'])
-                elif self.allow_optional_fields:
-                    if field['is_mandatory']:
-                        tuple_is_valid = False
-                        break
+                    tuple_field_value = _tuple[field['tuple_field']]
+                    # Handle the case that a single numpy array / List is the scoring input 
+                    # special mapping '__array__'has to be the only mapping
+                    # no field name used, ndarray needs 
+                    if field['model_field'] == '__array__':
+                        if isinstance(tuple_field_value, numpy.ndarray) and len(self.field_mapping) is 1:
+                            tuple_values = List(tuple_field_value)
+                            break
+                        elif isinstance(tuple_field_value, List)  and len(self.field_mapping) is 1:
+                            tuple_values = tuple_field_value
+                            break
+                        else:
+                            tuple_is_valid = False
+                            break
+                    # the normal case, multiple mapping entries and using field name 
+                    # tuple field value
+                    else:
+                        tuple_values.append(tuple_field_value)
+                        tuple_fields.append(field['model_field'])
+
+                #########################################################
+                # optional fields are actually not supported
+                # uncomment next prepared code lines in case we support 
+                # it in all code parts
+                #########################################################
+                #elif self.allow_optional_fields:
+                #    if field['is_mandatory']:
+                #        tuple_is_valid = False
+                #        break
+                
                 else:
                     tuple_is_valid = False
                     break
 
+            if not tuple_is_valid:            
+                tuple_error = " field: " + field['tuple_field']
+
+            ######################
+            # store tuple status
+            ######################
             if tuple_is_valid: 
                 self._status_list[index]["mapping_success"] = True
             else:
                 self._status_list[index]["mapping_success"] = False
-                self._status_list[index]["message"] = _STREAMSX_MAPPING_ERROR_MISSING_MANDATORY + field['tuple_field']
+                self._status_list[index]["message"] = _STREAMSX_MAPPING_ERROR_ + tuple_error
                 continue            
-                
+
+            
+            #######################
+            # add payload for tuple
+            #######################    
             if actual_input_combination['fields'] == tuple_fields:
                 #same fields as before, just add further values
                 actual_input_combination['values'].append(list(tuple_values))
-            else:
-                #close and store last fields/values combination in final _payload_list
-                #except for the first valid tuple being added
-                if len(actual_input_combination['values']) > 0 : self._payload_list.append(actual_input_combination) 
-                #create new field/value combination
+            elif len(actual_input_combination['values']) is 0:  
+                # first tuple
                 actual_input_combination['fields']=tuple_fields
                 actual_input_combination['values']=[list(tuple_values)]
+            else:
+                tuple_is_valid = False
+                tuple_error = " optional fields are not allowed"
+                # following code is preparation for support of multiple field combinations
+                # in case of supported optional fields
+                #
+                #close and store last fields/values combination in final _payload_list
+                #except for the first valid tuple being added
+                #if len(actual_input_combination['values']) > 0 : self._payload_list.append(actual_input_combination) 
+                ##create new field/value combination
+                #actual_input_combination['fields']=tuple_fields
+                #actual_input_combination['values']=[list(tuple_values)]
+
                         
-        #after last tuple store the open field/value combination finally in bundl_list
-        self._payload_list.append(actual_input_combination)
+        #after last tuple store the open field/value combination finally in payload_list
+        if len(actual_input_combination['values']) > 0:
+            # remove empty fields element resulting from single array as input 
+            if len(actual_input_combination['fields']) is 0:
+                actual_input_combination.pop('fields')
+            self._payload_list.append(actual_input_combination)
     
     
     def synch_rest_call(self):
