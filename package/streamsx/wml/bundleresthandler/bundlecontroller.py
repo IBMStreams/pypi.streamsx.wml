@@ -63,10 +63,10 @@ class BundleController():
         ############################################################
         self._input_queue = list([])
         self._sending_threads = []
-        self._lock = threading.Lock()
+        self._lock = threading.Condition() # changed to condition
         self._output_lock = threading.Lock()
         self._thread_finish_counter = 0
-        
+
         
         assert(self._handler_class is not None)
         ############################################################
@@ -86,18 +86,12 @@ class BundleController():
     def process_data(self, input_data):
         """It is called for every single input data
         It will be just stored in the input queue. On max queue size processing
-        stops and backpressure on the up-stream/sending_thread happens.
+        blocks and backpressure on the up-stream/sending_thread happens.
         """
-        # force backpressure, block calling thread here until input_tuple can be stored 
-        while(len(self._input_queue) >=  self._max_queue_size):
-            #todo check thread status
-            time.sleep(1)
         with self._lock:
-            #'Append' itself would not need a lock as from Python interpreter side it is
-            #atomic, and Python threading is on Python level not C level.
-            #But use lock here for the case of later added additional
-            #code which has to be executed together with 'append'
+            self._lock.wait_for(lambda : len(self._input_queue) <= self._max_queue_size)
             self._input_queue.append(input_data)
+            self._lock.notify()
 
 
     def prepare(self):

@@ -116,10 +116,6 @@ class BundleRestHandler():
                 self.postprocess()
                 self.write_result_to_output()
                 overall_count += bundle_tuple_count
-            else:
-                #todo choose different approach to get threads waiting for input
-                #may be queue with blocking read but queue we can't use to use subslicing and slice-deleting
-                time.sleep(0.2)
                 
         tracer.info("Handler %d stopped after %d records", self._handler_index, overall_count)
 
@@ -141,6 +137,12 @@ class BundleRestHandler():
 
         # python threading is just sequential processing, staying little longer in lock doesn't matter
         with self.input_list_lock:
+            
+            # wait blocking with timeout (to allow checking outer run condition) 
+            # until list has been filled
+            if not self.input_list_lock.wait_for(lambda:len(self.source_data_list) > 0 , 0.1): 
+                return 0
+        
             #determine size and copy max size or all to local data list
             input_size = len(self.source_data_list)
             #tracer.debug("ProcessStorage (%d) : source_data_list len before copy %d!", self._handler_index, input_size)
@@ -158,6 +160,9 @@ class BundleRestHandler():
                 #create the result list at once
                 self._result_list = [None for i in range(self._data_size)]
                 tracer.debug("ProcessStorage (%d) : source_data_list len after copy %d!", self._handler_index, len(self.source_data_list))
+                
+                #wake up waiting threads inclusive writing threads
+                self.input_list_lock.notify()
         return self._data_size                
         
     def get_final_data(self, single_list = True):

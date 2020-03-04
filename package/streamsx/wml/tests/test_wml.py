@@ -109,7 +109,7 @@ class Test(unittest.TestCase):
     # actually there is no stop criteria, neither in application
     # nor externally
     #########################################################################
-    def _test_score_bundle(self):
+    def test_score_bundle(self):
         print ('\n---------'+str(self))
 
         field_mapping =[{'model_field':'Sepal.Length',
@@ -165,7 +165,8 @@ class Test(unittest.TestCase):
 
         #set class variables
         BundleRestHandler.max_copy_size = 2
-        lock = threading.Lock()
+        #lock = threading.Lock()
+        lock = threading.Condition()
         BundleRestHandler.input_list_lock = lock
         BundleRestHandler.source_data_list = source_list
         BundleRestHandler.field_mapping = []
@@ -213,7 +214,8 @@ class Test(unittest.TestCase):
         ###################################################
         #set base classes class variables
         WmlBundleRestHandler.max_copy_size = 5
-        lock = threading.Lock()
+        #lock = threading.Lock()
+        lock = threading.Condition()
         WmlBundleRestHandler.input_list_lock = lock
         WmlBundleRestHandler.source_data_list = source_list
         WmlBundleRestHandler.single_output = False
@@ -324,7 +326,8 @@ class Test(unittest.TestCase):
         ###################################################
         #set handler base classes class variables
         WmlBundleRestHandler.max_copy_size = 5
-        lock = threading.Lock()
+        #lock = threading.Lock()
+        lock = threading.Condition()
         WmlBundleRestHandler.input_list_lock = lock
         WmlBundleRestHandler.source_data_list = source_list
         WmlBundleRestHandler.single_output = False
