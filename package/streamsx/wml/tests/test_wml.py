@@ -14,7 +14,7 @@ from streamsx.wml.bundleresthandler.wmlbundleresthandler import WmlBundleRestHan
 from streamsx.wml.bundleresthandler.bundleresthandler import BundleRestHandler
 
 import threading
-
+import numpy
 
 from watson_machine_learning_client import WatsonMachineLearningAPIClient
 
@@ -109,7 +109,7 @@ class Test(unittest.TestCase):
     # actually there is no stop criteria, neither in application
     # nor externally
     #########################################################################
-    def test_score_bundle(self):
+    def _test_score_bundle(self):
         print ('\n---------'+str(self))
 
         field_mapping =[{'model_field':'Sepal.Length',
@@ -263,9 +263,9 @@ class Test(unittest.TestCase):
         expected_payload = [{'fields': ['a_', 'b_'], 'values': [[0, 1], [1, 2], [3, 4]]}]
         expected_status = [{'mapping_success': True, 'score_success': False, 'message': None}, 
                            {'mapping_success': True, 'score_success': False, 'message': None}, 
-                           {'mapping_success': False, 'score_success': False, 'message': 'Missing mandatory input field: a'}, 
+                           {'mapping_success': False, 'score_success': False, 'message': 'Mapping error: input field: a'}, 
                            {'mapping_success': True, 'score_success': False, 'message': None}, 
-                           {'mapping_success': False, 'score_success': False, 'message': 'Missing mandatory input field: b'}]
+                           {'mapping_success': False, 'score_success': False, 'message': 'Mapping error: input field: b'}]
         print(test_store1.get_payload())
         print(test_store1.get_status())
         assert expected_payload == test_store1.get_payload()
@@ -280,7 +280,7 @@ class Test(unittest.TestCase):
         expected_status = [{'mapping_success': True, 'score_success': False, 'message': None}, 
                            {'mapping_success': True, 'score_success': False, 'message': None}, 
                            {'mapping_success': True, 'score_success': False, 'message': None}, 
-                           {'mapping_success': False, 'score_success': False, 'message': 'Missing mandatory input field: a'}, 
+                           {'mapping_success': False, 'score_success': False, 'message': 'Mapping error: input field: a'}, 
                            {'mapping_success': True, 'score_success': False, 'message': None}]
         print(test_store2.get_payload())
         print(test_store2.get_status())
@@ -347,8 +347,7 @@ class Test(unittest.TestCase):
         test_store1.synch_rest_call()
         
         expected_response = {'predictions': [{'fields': ['prediction$1', 'prediction$2'], 'values': [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5]]}]}
-        print ("#######")
-        print('1 test_store1.get_rest_response')
+        print('1 ####### test_store1.get_rest_response')
         print(test_store1.get_rest_response())
         assert expected_response == test_store1.get_rest_response()
 
@@ -358,8 +357,7 @@ class Test(unittest.TestCase):
                            {'mapping_success': True, 'score_success': True, 'message': None}, 
                            {'mapping_success': True, 'score_success': True, 'message': None}
                           ]
-        print ("#######")
-        print('2 test_store1.get_rest_status')
+        print('2 ####### test_store1.get_rest_status')
         print(test_store1.get_status())
         assert expected_status == test_store1.get_status()
         
@@ -371,8 +369,7 @@ class Test(unittest.TestCase):
                            {'Prediction': {'prediction$1': 3, 'prediction$2': 4}}, 
                            {'Prediction': {'prediction$1': 4, 'prediction$2': 5}}
                           ]
-        print ("#######")
-        print('3 test_store1.get_postprocess_result')
+        print('3 ####### test_store1.get_postprocess_result')
         print(test_store1.get_postprocess_result())
         assert expected_result == test_store1.get_postprocess_result()
 
@@ -382,13 +379,11 @@ class Test(unittest.TestCase):
                           {'Prediction': {'prediction$1': 3, 'prediction$2': 4},'a': 3, 'b': 4, 'c': 5}, 
                           {'Prediction': {'prediction$1': 4, 'prediction$2': 5},'a': 4, 'b': 5, 'c': 6}
                          ]]
-        print ("#######")
-        print('4 test_store1.get_final_data')
+        print('4 ####### test_store1.get_final_data')
         print(test_store1.get_final_data())
         assert expected_final == test_store1.get_final_data()
-        print ("#######  5 output function call")
+        print ("5 ####### output function call")
         test_store1.write_result_to_output()
-        print ("#######")
         
         
         assert len(source_list) == 5
@@ -402,46 +397,42 @@ class Test(unittest.TestCase):
         
         expected_response = {'predictions': [{'fields': ['prediction$1', 'prediction$2'], 
                                               'values': [[6, 7], [7, 8], [9, 10]]}]}
-        print ("#######")
-        print('6 test_store1.get_rest_response')
+        print('6 ####### test_store1.get_rest_response')
         print(test_store1.get_rest_response())
         assert expected_response == test_store1.get_rest_response()
 
-        expected_status = [{'mapping_success': False, 'score_success': False, 'message': 'Missing mandatory input field: a'}, 
+        expected_status = [{'mapping_success': False, 'score_success': False, 'message': 'Mapping error: input field: a'}, 
                            {'mapping_success': True, 'score_success': True, 'message': None}, 
                            {'mapping_success': True, 'score_success': True, 'message': None}, 
-                           {'mapping_success': False, 'score_success': False, 'message': 'Missing mandatory input field: a'}, 
+                           {'mapping_success': False, 'score_success': False, 'message': 'Mapping error: input field: a'}, 
                            {'mapping_success': True, 'score_success': True, 'message': None}
                           ]
 
-        print ("#######")
-        print('7 test_store1.get_rest_status')
+        print('7 ####### test_store1.get_rest_status')
         print(test_store1.get_status())
         assert expected_status == test_store1.get_status()
         
         test_store1.postprocess()
 
-        expected_result = [{'PredictionError': 'Missing mandatory input field: a'},
+        expected_result = [{'PredictionError': 'Mapping error: input field: a'},
                            {'Prediction': {'prediction$1': 6, 'prediction$2': 7}}, 
                            {'Prediction': {'prediction$1': 7, 'prediction$2': 8}}, 
-                           {'PredictionError': 'Missing mandatory input field: a'},
+                           {'PredictionError': 'Mapping error: input field: a'},
                            {'Prediction': {'prediction$1': 9, 'prediction$2': 10}}
                           ]
 
-        print ("#######")
-        print('8 test_store1.get_postprocess_result')
+        print('8 ####### test_store1.get_postprocess_result')
         print(test_store1.get_postprocess_result())
         assert expected_result == test_store1.get_postprocess_result()
 
-        expected_final = [[{'PredictionError': 'Missing mandatory input field: a','b': 6, 'c': 7}, 
+        expected_final = [[{'PredictionError': 'Mapping error: input field: a','b': 6, 'c': 7}, 
                           {'Prediction': {'prediction$1': 6, 'prediction$2': 7},'a': 6, 'b': 7, 'c': 8}, 
                           {'Prediction': {'prediction$1': 7, 'prediction$2': 8},'a': 7, 'b': 8, 'c': 9}, 
-                          {'PredictionError': 'Missing mandatory input field: a','c': 10}, 
+                          {'PredictionError': 'Mapping error: input field: a','c': 10}, 
                           {'Prediction': {'prediction$1': 9, 'prediction$2': 10},'a': 9, 'b': 10, 'c': 11}
                          ]]
         
-        print ("#######")
-        print('9 test_store1.get_final_data with single output list')
+        print('9 ####### test_store1.get_final_data with single output list')
         print(test_store1.get_final_data())
         assert expected_final == test_store1.get_final_data()
 
@@ -450,20 +441,71 @@ class Test(unittest.TestCase):
                             {'Prediction': {'prediction$1': 9, 'prediction$2': 10},'a': 9, 'b': 10, 'c': 11}
                            ]
 
-        expected_error = [{'PredictionError': 'Missing mandatory input field: a','b': 6, 'c': 7}, 
-                          {'PredictionError': 'Missing mandatory input field: a','c': 10} 
+        expected_error = [{'PredictionError': 'Mapping error: input field: a','b': 6, 'c': 7}, 
+                          {'PredictionError': 'Mapping error: input field: a','c': 10} 
                          ]
         
-        print ("#######")
-        print('10 test_store1.get_final_data with two output lists')
+        print('10 ####### test_store1.get_final_data with two output lists')
         success,error = test_store1.get_final_data( single_list=False)
-        print ("#######")
         assert expected_success == success
         assert expected_error == error
-        print ("####### 11 output function call")
+        print ("11 ####### output function call")
         test_store1.write_result_to_output()
-        print ("#######")
         
+
+    def test_WmlBundleRestHandler_single_array_input(self):
+
+        # this test case needs a mockup of the wml api call wml_clien.deployments.score()
+        # to be injected to class as loopback generating just what is expected
+        class wml_client_stub ():
+            class deployments_():
+                def score(self,deployment_id, **meta_props):
+                    if len(meta_props["meta_props"]["input_data"][0]["values"]) is 5:
+                        return {'predictions': [{'fields': ['prediction$1', 'prediction$2'], 'values': [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5]]}]}
+                    else:
+                        return {'predictions': [{'fields': ['prediction$1', 'prediction$2'], 'values': [[6, 7], [7, 8], [9, 10]]}]}
+            deployments = deployments_()      
+
+        # list of 10 tuples, 5 valid
+        source_list = [{"a":numpy.array([i+1,i+2,i+3,i+4,i+5]), "b": i+1, "c": i+2} for i in range(10)]
+
+        ###################################################
+        #initialize the handler class
+        ###################################################
+        #set handler base classes class variables
+        WmlBundleRestHandler.max_copy_size = 5
+        lock = threading.Condition()
+        WmlBundleRestHandler.input_list_lock = lock
+        WmlBundleRestHandler.source_data_list = source_list
+        WmlBundleRestHandler.single_output = False
+        WmlBundleRestHandler.field_mapping=[{"model_field":"__array__", "tuple_field":"a"}]
+        WmlBundleRestHandler.output_function = output_class(self)
+        #set WML handler sub classes class variables
+        WmlBundleRestHandler.wml_client = wml_client_stub
+        WmlBundleRestHandler.deployment_guid = "deploymentid"
+
+
+        print ("0 #######  Check numpy.array handling #########")
+                        
+        test_store1 = WmlBundleRestHandler(1)
+        test_store1.copy_from_source()
+        test_store1.preprocess()
+        expected_payload = [{'values': [[1, 2, 3, 4, 5], [ 2, 3, 4, 5, 6], [3, 4, 5, 6, 7], [ 4, 5, 6, 7, 8], [ 5, 6, 7, 8, 9]]}]
+        print(test_store1.get_payload())
+        assert expected_payload == test_store1.get_payload()
+        
+        expected_status = [{'mapping_success': True, 'score_success': False, 'message': None}, 
+                           {'mapping_success': True, 'score_success': False, 'message': None}, 
+                           {'mapping_success': True, 'score_success': False, 'message': None}, 
+                           {'mapping_success': True, 'score_success': False, 'message': None}, 
+                           {'mapping_success': True, 'score_success': False, 'message': None}
+                          ]
+        print('2 ####### test_store1.get_rest_status')
+        print(test_store1.get_status())
+        assert expected_status == test_store1.get_status()
+
+
+
         
 
 class TestDistributed(Test):

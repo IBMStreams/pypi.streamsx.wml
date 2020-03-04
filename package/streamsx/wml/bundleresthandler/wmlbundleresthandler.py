@@ -14,7 +14,7 @@ logger = logging.getLogger("com.ibm.streams.log")
 from .bundleresthandler import BundleRestHandler   
    
    
-_STREAMSX_MAPPING_ERROR_ = "Mapping error for input field: "
+_STREAMSX_MAPPING_ERROR_ = "Mapping error: "
    
 class WmlBundleRestHandler(BundleRestHandler):
 
@@ -92,7 +92,7 @@ class WmlBundleRestHandler(BundleRestHandler):
                     # no field name used, ndarray needs 
                     if field['model_field'] == '__array__':
                         if isinstance(tuple_field_value, numpy.ndarray) and len(self.field_mapping) is 1:
-                            tuple_values = List(tuple_field_value)
+                            tuple_values = list(tuple_field_value)
                             break
                         elif isinstance(tuple_field_value, List)  and len(self.field_mapping) is 1:
                             tuple_values = tuple_field_value
@@ -121,7 +121,7 @@ class WmlBundleRestHandler(BundleRestHandler):
                     break
 
             if not tuple_is_valid:            
-                tuple_error = " field: " + field['tuple_field']
+                tuple_error = "input field: " + field['tuple_field']
 
             ######################
             # store tuple status
