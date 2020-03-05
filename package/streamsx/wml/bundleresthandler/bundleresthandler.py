@@ -27,14 +27,6 @@ import logging
 
    
 tracer = logging.getLogger(__name__)   
-release = False
-if not release:
-    tracer.setLevel(logging.DEBUG)
-    tracer.addHandler(logging.StreamHandler(sys.stdout))
-   
-   
-   
-   
    
 class BundleRestHandler():
 
@@ -159,7 +151,7 @@ class BundleRestHandler():
                 self._status_list = [{"mapping_success":False,"score_success":False,"message":None} for i in range(self._data_size)]
                 #create the result list at once
                 self._result_list = [None for i in range(self._data_size)]
-                tracer.debug("ProcessStorage (%d) : source_data_list len after copy %d!", self._handler_index, len(self.source_data_list))
+                #tracer.debug("ProcessStorage (%d) : source_data_list len after copy %d!", self._handler_index, len(self.source_data_list))
                 
                 #wake up waiting threads inclusive writing threads
                 self.input_list_lock.notify()

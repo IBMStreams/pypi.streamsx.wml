@@ -2,7 +2,7 @@ from setuptools import setup
 import streamsx.wml
 setup(
   name = 'streamsx.wml',
-  packages = ['streamsx.wml'],
+  packages = ['streamsx.wml','streamsx.wml.bundleresthandler'],
   include_package_data=True,
   version = streamsx.wml.__version__,
   description = 'Watson Machine Learning online scoring integration in IBM Streams topology applications',

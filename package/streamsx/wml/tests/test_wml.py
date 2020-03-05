@@ -18,6 +18,15 @@ import numpy
 
 from watson_machine_learning_client import WatsonMachineLearningAPIClient
 
+
+
+
+
+
+#tracer.setLevel(logging.DEBUG)
+#tracer.addHandler(logging.StreamHandler(sys.stdout))
+
+
 ###################################################################################
 # Read credentials from test environment
 ###################################################################################
@@ -109,7 +118,7 @@ class Test(unittest.TestCase):
     # actually there is no stop criteria, neither in application
     # nor externally
     #########################################################################
-    def _test_score_bundle(self):
+    def test_score_bundle(self):
         print ('\n---------'+str(self))
 
         field_mapping =[{'model_field':'Sepal.Length',
@@ -125,15 +134,20 @@ class Test(unittest.TestCase):
                             'is_mandatory':True,
                             'tuple_field':'petal_width'}]
 
+        #deployment_guid = '9cffe75d-ae10-4980-a2c4-d25e1c453fa7' #https://sf1-cpd-sf1.apps.streams-flows-dev-1-lb-1.fyre.ibm.com
+        #space_guid = 'e5e9ad46-0acf-4261-a9c1-255b2ce9c148'
+        deployment_guid = '2cb54ac3-3172-479f-8289-dc9d0c9372b0' #https://zen-cpd-zen.apps.xen-cea-os-43.os.fyre.ibm.com
+        space_guid = '8633c774-3e0f-4710-9a88-9157dd5a3921'
+        
         name = 'test_score_bundle'
         topo = Topology(name)
         source_stream = topo.source(TestSource())
         # stream of dicts is consumed by wml_online_scoring
         scorings,invalids = wml.wml_online_scoring(source_stream,
-                                     '9cffe75d-ae10-4980-a2c4-d25e1c453fa7',#'c764e524-0876-4e03-a6da-5f3bbc5e5482', #deployment_guid
+                                     deployment_guid,
                                      field_mapping, 
                                      json.loads(cloud_creds_env_var()), #wml_credentials,
-                                     'e5e9ad46-0acf-4261-a9c1-255b2ce9c148',#'1fb6550c-b22a-4a90-93fc-458ec048662e',
+                                     space_guid,
                                      expected_load = 1000,
                                      queue_size = 2000, 
                                      threads_per_node = 1)

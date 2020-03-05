@@ -20,14 +20,10 @@ import pickle
 import sys
 
 
-release = False
 #define tracer and logger
 #logger for error which should and can! be handled by an administrator
 #tracer for all other events that are of interest for developer
 tracer = logging.getLogger(__name__)
-if not release:
-    tracer.setLevel(logging.DEBUG)
-    tracer.addHandler(logging.StreamHandler(sys.stdout))
 
 
 class WmlBundleController(BundleController):

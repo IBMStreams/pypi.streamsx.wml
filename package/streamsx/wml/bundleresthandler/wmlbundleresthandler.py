@@ -216,7 +216,7 @@ class WmlBundleRestHandler(BundleRestHandler):
                 if item["message"] is None:
                     item["message"] = "WML API error: " + error_message
 
-        tracer.debug("WMLOnlineScoring: Worker %d got %d predictions from WML model deployment!", self._handler_index, len(self._rest_response['predictions'][0]['values']))
+        #tracer.debug("WMLOnlineScoring: Worker %d got %d predictions from WML model deployment!", self._handler_index, len(self._rest_response['predictions'][0]['values']))
     
         return len(self._rest_response['predictions']) # number of prediction response bundles
         
