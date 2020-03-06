@@ -49,7 +49,9 @@ class output_class():
         self._output_object = output_object
     def __call__(self, output):
         #with self._output_lock:
-        print ("################", str(output))
+        print ("################ stream output ######################")
+        print ( str(output))
+        print ("#####################################################")
 
 
 ###################################################################################
@@ -173,6 +175,7 @@ class Test(unittest.TestCase):
     # 
     #########################################################################
     def test_BundleRestHandler_copy(self):
+        print("############# test_WmlBundleRestHandler_preprocess() ###############")
 
         #create instance by copying from a source_list
         source_list = [{"a":i} for i in range(10)]
@@ -188,14 +191,16 @@ class Test(unittest.TestCase):
         
         test_store1 = BundleRestHandler(1)
         test_store1.copy_from_source()
-        print ("source_list: ", source_list)
+        #print ("source_list: ", source_list)
+        print("    check source list length after copy: handler 1")
         assert len(source_list) == 8
         BundleRestHandler.max_copy_size = 4
         test_store2 = BundleRestHandler(2)
         test_store2.copy_from_source()
-        print ("source_list: ", source_list)
-        print ("local_list 1: ", test_store1._data_list)
-        print ("local_list 2: ", test_store2._data_list)
+        #print ("source_list: ", source_list)
+        #print ("local_list 1: ", test_store1._data_list)
+        #print ("local_list 2: ", test_store2._data_list)
+        print("    check source list length after copy: handler 2")
         assert len(source_list) == 4
         
 
@@ -209,6 +214,8 @@ class Test(unittest.TestCase):
     #########################################################################
     def test_WmlBundleRestHandler_preprocess(self):
 
+        print("############# test_WmlBundleRestHandler_preprocess() ###############")
+        
         #functionally not needed in this testcase but needed for compilation
         class wml_client_stub ():
             class deployments_():
@@ -219,7 +226,7 @@ class Test(unittest.TestCase):
                         return {'predictions': [{'fields': ['prediction$1', 'prediction$2'], 'values': [[6, 7], [7, 8], [9, 10]]}]}
             deployments = deployments_()      
 
-
+        print("    ###### test with valid input only")
         # list of 10 valid tuples
         source_list = [{"a":i, "b": i+1, "c": i+2} for i in range(10)]
 
@@ -246,22 +253,27 @@ class Test(unittest.TestCase):
         test_store1.copy_from_source()
         test_store1.preprocess()
         expected_payload = [{'fields': ['a_', 'b_'], 'values': [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5]]}]
-        print(test_store1.get_payload())
+        #print(test_store1.get_payload())
+        print("    check expected payload: handler 1")
         assert expected_payload == test_store1.get_payload()
         
+        print("    check source list length")
         assert len(source_list) == 5
         
         test_store2 = WmlBundleRestHandler(2)
         test_store2.copy_from_source()
         test_store2.preprocess()
         expected_payload = [{'fields': ['a_', 'b_'], 'values': [[5, 6], [6, 7], [7, 8], [8, 9], [9, 10]]}]
-        print(test_store2.get_payload())
+        #print(test_store2.get_payload())
+        print("    check expected payload: handler 2")
         assert expected_payload == test_store2.get_payload()
+        print("    check source list length")
         assert len(source_list) == 0
         
 
 
-
+        print("    ####### test with valid and invalid input #######")
+    
         # mixed list of 10 valid and invalid tuples
         source_list = [{"a":i, "b": i+1, "c": i+2} for i in range(10)]
         source_list[4].pop("b")
@@ -280,11 +292,14 @@ class Test(unittest.TestCase):
                            {'mapping_success': False, 'score_success': False, 'message': 'Mapping error: input field: a'}, 
                            {'mapping_success': True, 'score_success': False, 'message': None}, 
                            {'mapping_success': False, 'score_success': False, 'message': 'Mapping error: input field: b'}]
-        print(test_store1.get_payload())
-        print(test_store1.get_status())
+        #print(test_store1.get_payload())
+        #print(test_store1.get_status())
+        print("    check expected payload: handler 1")
         assert expected_payload == test_store1.get_payload()
+        print("    check expected status: handler 1")
         assert expected_status == test_store1.get_status()
         
+        print("    check source list length")
         assert len(source_list) == 5
         
         test_store2 = WmlBundleRestHandler(2)
@@ -296,10 +311,13 @@ class Test(unittest.TestCase):
                            {'mapping_success': True, 'score_success': False, 'message': None}, 
                            {'mapping_success': False, 'score_success': False, 'message': 'Mapping error: input field: a'}, 
                            {'mapping_success': True, 'score_success': False, 'message': None}]
-        print(test_store2.get_payload())
-        print(test_store2.get_status())
+        #print(test_store2.get_payload())
+        #print(test_store2.get_status())
+        print("    check expected payload: handler 2")
         assert expected_payload == test_store2.get_payload()
+        print("    check expected status: handler 2")
         assert expected_status == test_store2.get_status()
+        print("    check source list length")
         assert len(source_list) == 0
 
 
@@ -318,6 +336,8 @@ class Test(unittest.TestCase):
     #########################################################################
     def test_WmlBundleRestHandler_synch_rest_call(self):
 
+        print("############# test_WmlBundleRestHandler_synch_rest_call() ###############")
+
         # this test case needs a mockup of the wml api call wml_clien.deployments.score()
         # to be injected to class as loopback generating just what is expected
         class wml_client_stub ():
@@ -329,6 +349,7 @@ class Test(unittest.TestCase):
                         return {'predictions': [{'fields': ['prediction$1', 'prediction$2'], 'values': [[6, 7], [7, 8], [9, 10]]}]}
             deployments = deployments_()      
 
+        print("    ##### test with valid and invalid input ")
         # list of 10 tuples, 5 valid + 5 mixed
         source_list = [{"a":i, "b": i+1, "c": i+2} for i in range(10)]
         source_list[5].pop("a")
@@ -352,17 +373,14 @@ class Test(unittest.TestCase):
         WmlBundleRestHandler.wml_client = wml_client_stub
         WmlBundleRestHandler.deployment_guid = "deploymentid"
 
-
-        print ("0 #######  complete sequence Test with only valid data #########")
-                        
         test_store1 = WmlBundleRestHandler(1)
         test_store1.copy_from_source()
         test_store1.preprocess()
         test_store1.synch_rest_call()
         
         expected_response = {'predictions': [{'fields': ['prediction$1', 'prediction$2'], 'values': [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5]]}]}
-        print('1 ####### test_store1.get_rest_response')
-        print(test_store1.get_rest_response())
+        #print(test_store1.get_rest_response())
+        print("    check expected response: handler 1")
         assert expected_response == test_store1.get_rest_response()
 
         expected_status = [{'mapping_success': True, 'score_success': True, 'message': None}, 
@@ -371,8 +389,8 @@ class Test(unittest.TestCase):
                            {'mapping_success': True, 'score_success': True, 'message': None}, 
                            {'mapping_success': True, 'score_success': True, 'message': None}
                           ]
-        print('2 ####### test_store1.get_rest_status')
-        print(test_store1.get_status())
+        #print(test_store1.get_status())
+        print("    check expected status: handler 1")
         assert expected_status == test_store1.get_status()
         
         test_store1.postprocess()
@@ -383,8 +401,8 @@ class Test(unittest.TestCase):
                            {'Prediction': {'prediction$1': 3, 'prediction$2': 4}}, 
                            {'Prediction': {'prediction$1': 4, 'prediction$2': 5}}
                           ]
-        print('3 ####### test_store1.get_postprocess_result')
-        print(test_store1.get_postprocess_result())
+        #print(test_store1.get_postprocess_result())
+        print("    check expected post process result: handler 1")
         assert expected_result == test_store1.get_postprocess_result()
 
         expected_final = [[{'Prediction': {'prediction$1': 0, 'prediction$2': 1},'a': 0, 'b': 1, 'c': 2}, 
@@ -393,16 +411,15 @@ class Test(unittest.TestCase):
                           {'Prediction': {'prediction$1': 3, 'prediction$2': 4},'a': 3, 'b': 4, 'c': 5}, 
                           {'Prediction': {'prediction$1': 4, 'prediction$2': 5},'a': 4, 'b': 5, 'c': 6}
                          ]]
-        print('4 ####### test_store1.get_final_data')
-        print(test_store1.get_final_data())
+        #print(test_store1.get_final_data())
+        print("    check expected final result: handler 1")
         assert expected_final == test_store1.get_final_data()
-        print ("5 ####### output function call")
         test_store1.write_result_to_output()
         
-        
+        print("    check source list length")
         assert len(source_list) == 5
 
-        print ("#######  complete sequence Test with errorneous data #########")
+        print ("    #####  test with valid and invalid input #########")
         # second bundle of size 5 with some errors
         test_store1 = WmlBundleRestHandler(1)
         test_store1.copy_from_source()
@@ -411,8 +428,8 @@ class Test(unittest.TestCase):
         
         expected_response = {'predictions': [{'fields': ['prediction$1', 'prediction$2'], 
                                               'values': [[6, 7], [7, 8], [9, 10]]}]}
-        print('6 ####### test_store1.get_rest_response')
-        print(test_store1.get_rest_response())
+        #print(test_store1.get_rest_response())
+        print("    check expected response: handler 1")
         assert expected_response == test_store1.get_rest_response()
 
         expected_status = [{'mapping_success': False, 'score_success': False, 'message': 'Mapping error: input field: a'}, 
@@ -422,8 +439,8 @@ class Test(unittest.TestCase):
                            {'mapping_success': True, 'score_success': True, 'message': None}
                           ]
 
-        print('7 ####### test_store1.get_rest_status')
-        print(test_store1.get_status())
+        print("    check expected status: handler 1")
+        #print(test_store1.get_status())
         assert expected_status == test_store1.get_status()
         
         test_store1.postprocess()
@@ -435,8 +452,8 @@ class Test(unittest.TestCase):
                            {'Prediction': {'prediction$1': 9, 'prediction$2': 10}}
                           ]
 
-        print('8 ####### test_store1.get_postprocess_result')
-        print(test_store1.get_postprocess_result())
+        #print(test_store1.get_postprocess_result())
+        print("    check expected post process result: handler 1")
         assert expected_result == test_store1.get_postprocess_result()
 
         expected_final = [[{'PredictionError': 'Mapping error: input field: a','b': 6, 'c': 7}, 
@@ -446,8 +463,8 @@ class Test(unittest.TestCase):
                           {'Prediction': {'prediction$1': 9, 'prediction$2': 10},'a': 9, 'b': 10, 'c': 11}
                          ]]
         
-        print('9 ####### test_store1.get_final_data with single output list')
-        print(test_store1.get_final_data())
+        #print(test_store1.get_final_data())
+        print("    check expected final result: handler 1")
         assert expected_final == test_store1.get_final_data()
 
         expected_success = [{'Prediction': {'prediction$1': 6, 'prediction$2': 7},'a': 6, 'b': 7, 'c': 8}, 
@@ -459,15 +476,16 @@ class Test(unittest.TestCase):
                           {'PredictionError': 'Mapping error: input field: a','c': 10} 
                          ]
         
-        print('10 ####### test_store1.get_final_data with two output lists')
         success,error = test_store1.get_final_data( single_list=False)
+        print("    check expected stream data: handler 1")
         assert expected_success == success
         assert expected_error == error
-        print ("11 ####### output function call")
         test_store1.write_result_to_output()
         
 
     def test_WmlBundleRestHandler_single_array_input(self):
+
+        print("############# test_WmlBundleRestHandler_single_array_input() ###############")
 
         # this test case needs a mockup of the wml api call wml_clien.deployments.score()
         # to be injected to class as loopback generating just what is expected
@@ -499,13 +517,14 @@ class Test(unittest.TestCase):
         WmlBundleRestHandler.deployment_guid = "deploymentid"
 
 
-        print ("0 #######  Check numpy.array handling #########")
+        print ("    ##### numpy.array handling #####")
                         
         test_store1 = WmlBundleRestHandler(1)
         test_store1.copy_from_source()
         test_store1.preprocess()
         expected_payload = [{'values': [[1, 2, 3, 4, 5], [ 2, 3, 4, 5, 6], [3, 4, 5, 6, 7], [ 4, 5, 6, 7, 8], [ 5, 6, 7, 8, 9]]}]
-        print(test_store1.get_payload())
+        print("    check expected payload: handler 1")
+        #print(test_store1.get_payload())
         assert expected_payload == test_store1.get_payload()
         
         expected_status = [{'mapping_success': True, 'score_success': False, 'message': None}, 
@@ -514,8 +533,8 @@ class Test(unittest.TestCase):
                            {'mapping_success': True, 'score_success': False, 'message': None}, 
                            {'mapping_success': True, 'score_success': False, 'message': None}
                           ]
-        print('2 ####### test_store1.get_rest_status')
-        print(test_store1.get_status())
+        print("    check expected status: handler 1")
+        #print(test_store1.get_status())
         assert expected_status == test_store1.get_status()
 
 

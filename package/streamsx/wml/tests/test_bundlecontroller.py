@@ -42,7 +42,9 @@ class output_class():
         self._output_object = output_object
     def __call__(self, output):
         #with self._output_lock:
-        print ("################", str(output))
+        print ("################ stream output ######################")
+        print ( str(output))
+        print ("#####################################################")
 
 
 ###################################################################################
@@ -115,6 +117,19 @@ class Test(unittest.TestCase):
     # is injected the handlers processing sequence is not started.
     ##################################################################        
     def test_bundleController_simplethreads(self):
+        print("############# test_bundleController_simplethreads() ###############")
+        field_mapping =json.dumps([{"model_field":"Sepal.Length",
+                            "is_mandatory":True,
+                            "tuple_field":"sepal_length"},
+                           {"model_field":"Sepal.Width",
+                            "is_mandatory":True,
+                            "tuple_field":"sepal_width"},
+                           {"model_field":"Petal.Length",
+                            "is_mandatory":True,
+                            "tuple_field":"petal_length"},
+                           {"model_field":"Petal.Width",
+                            "is_mandatory":True,
+                            "tuple_field":"petal_width"}])
 
 
         client = BundleController (
@@ -126,6 +141,8 @@ class Test(unittest.TestCase):
                        threads_per_node = 3,
                        single_output = False,
                        node_count = 1,
+                       field_mapping = field_mapping,
+                       output_function = (lambda x: print(x)),
                        handler_class = BundleRestHandler)
         client.prepare()
         time.sleep(2)
@@ -134,7 +151,8 @@ class Test(unittest.TestCase):
         client.stop()
         time.sleep(2)
         client.finish()
-
+        
+        print ("    Test OK")
 
 
     ##################################################################
@@ -146,8 +164,9 @@ class Test(unittest.TestCase):
     # is injected the handlers processing sequence is not started.
     ##################################################################        
     def test_WmlBundleController_simplethreads(self):
+        print("############# test_WmlBundleController_simplethreads() ###############")
 
-        field_mapping =[{"model_field":"Sepal.Length",
+        field_mapping =json.dumps([{"model_field":"Sepal.Length",
                             "is_mandatory":True,
                             "tuple_field":"sepal_length"},
                            {"model_field":"Sepal.Width",
@@ -158,7 +177,7 @@ class Test(unittest.TestCase):
                             "tuple_field":"petal_length"},
                            {"model_field":"Petal.Width",
                             "is_mandatory":True,
-                            "tuple_field":"petal_width"}]
+                            "tuple_field":"petal_width"}])
 
 
         client = WmlBundleController (
@@ -176,7 +195,7 @@ class Test(unittest.TestCase):
                        threads_per_node = 3,
                        single_output = False,
                        node_count = 1,
-                       field_mapping = json.dumps(field_mapping),		
+                       field_mapping = field_mapping,		
                        handler_class = WmlBundleRestHandler
                        )
                        

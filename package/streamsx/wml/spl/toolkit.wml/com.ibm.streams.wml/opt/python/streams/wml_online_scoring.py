@@ -164,7 +164,7 @@ class WMLOnlineScoring(spl.PrimitiveOperator):
 
     def __exit__(self, exc_type, exc_value, traceback):
         tracer.debug("__exit__ called")
-        self._controller.end()
+        self._controller.stop()
         tracer.debug("__exit__ finished, triggered all sub threads to stop")
     
     
