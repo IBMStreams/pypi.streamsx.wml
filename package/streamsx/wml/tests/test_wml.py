@@ -38,6 +38,21 @@ def cloud_creds_env_var():
         result = None
     return result
 
+def deployment_env_var():
+    result = None
+    try:
+        result = os.environ['WML_DEPLOYMENT_GUID']
+    except KeyError: 
+        result = None
+    return result
+    
+def space_env_var():
+    result = None
+    try:
+        result = os.environ['WML_SPACE_GUID']
+    except KeyError: 
+        result = None
+    return result
 
 
 
@@ -136,10 +151,8 @@ class Test(unittest.TestCase):
                             'is_mandatory':True,
                             'tuple_field':'petal_width'}]
 
-        #deployment_guid = '9cffe75d-ae10-4980-a2c4-d25e1c453fa7' #https://sf1-cpd-sf1.apps.streams-flows-dev-1-lb-1.fyre.ibm.com
-        #space_guid = 'e5e9ad46-0acf-4261-a9c1-255b2ce9c148'
-        deployment_guid = '2cb54ac3-3172-479f-8289-dc9d0c9372b0' #https://zen-cpd-zen.apps.xen-cea-os-43.os.fyre.ibm.com
-        space_guid = '8633c774-3e0f-4710-9a88-9157dd5a3921'
+        deployment_guid = deployment_env_var() #'a0a04976-9a81-4748-bed0-079890f7c96c'
+        space_guid = space_env_var() #'062c92c1-765e-43b9-801a-629215a0e866'
         
         name = 'test_score_bundle'
         topo = Topology(name)
@@ -537,6 +550,59 @@ class Test(unittest.TestCase):
         #print(test_store1.get_status())
         assert expected_status == test_store1.get_status()
 
+    def test_WmlBundleRestHandler_single_list_input(self):
+
+        print("############# test_WmlBundleRestHandler_single_list_input() ###############")
+
+        # this test case needs a mockup of the wml api call wml_clien.deployments.score()
+        # to be injected to class as loopback generating just what is expected
+        class wml_client_stub ():
+            class deployments_():
+                def score(self,deployment_id, **meta_props):
+                    if len(meta_props["meta_props"]["input_data"][0]["values"]) is 5:
+                        return {'predictions': [{'fields': ['prediction$1', 'prediction$2'], 'values': [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5]]}]}
+                    else:
+                        return {'predictions': [{'fields': ['prediction$1', 'prediction$2'], 'values': [[6, 7], [7, 8], [9, 10]]}]}
+            deployments = deployments_()      
+
+        # list of 10 tuples, 5 valid
+        source_list = [{"a":list([i+1,i+2,i+3,i+4,i+5]), "b": i+1, "c": i+2} for i in range(10)]
+
+        ###################################################
+        #initialize the handler class
+        ###################################################
+        #set handler base classes class variables
+        WmlBundleRestHandler.max_copy_size = 5
+        lock = threading.Condition()
+        WmlBundleRestHandler.input_list_lock = lock
+        WmlBundleRestHandler.source_data_list = source_list
+        WmlBundleRestHandler.single_output = False
+        WmlBundleRestHandler.field_mapping=[{"model_field":"__array__", "tuple_field":"a"}]
+        WmlBundleRestHandler.output_function = output_class(self)
+        #set WML handler sub classes class variables
+        WmlBundleRestHandler.wml_client = wml_client_stub
+        WmlBundleRestHandler.deployment_guid = "deploymentid"
+
+
+        print ("    ##### list handling #####")
+                        
+        test_store1 = WmlBundleRestHandler(1)
+        test_store1.copy_from_source()
+        test_store1.preprocess()
+        expected_payload = [{'values': [[1, 2, 3, 4, 5], [ 2, 3, 4, 5, 6], [3, 4, 5, 6, 7], [ 4, 5, 6, 7, 8], [ 5, 6, 7, 8, 9]]}]
+        print("    check expected payload: handler 1")
+        #print(test_store1.get_payload())
+        assert expected_payload == test_store1.get_payload()
+        
+        expected_status = [{'mapping_success': True, 'score_success': False, 'message': None}, 
+                           {'mapping_success': True, 'score_success': False, 'message': None}, 
+                           {'mapping_success': True, 'score_success': False, 'message': None}, 
+                           {'mapping_success': True, 'score_success': False, 'message': None}, 
+                           {'mapping_success': True, 'score_success': False, 'message': None}
+                          ]
+        print("    check expected status: handler 1")
+        #print(test_store1.get_status())
+        assert expected_status == test_store1.get_status()
 
 
         

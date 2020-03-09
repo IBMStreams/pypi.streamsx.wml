@@ -94,7 +94,7 @@ class WmlBundleRestHandler(BundleRestHandler):
                         if isinstance(tuple_field_value, numpy.ndarray) and len(self.field_mapping) is 1:
                             tuple_values = list(tuple_field_value)
                             break
-                        elif isinstance(tuple_field_value, List)  and len(self.field_mapping) is 1:
+                        elif isinstance(tuple_field_value, list)  and len(self.field_mapping) is 1:
                             tuple_values = tuple_field_value
                             break
                         else:
