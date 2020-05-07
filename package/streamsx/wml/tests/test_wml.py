@@ -163,9 +163,10 @@ class Test(unittest.TestCase):
                                      field_mapping, 
                                      json.loads(cloud_creds_env_var()), #wml_credentials,
                                      space_guid,
-                                     expected_load = 1000,
+                                     #expected_load = 1000,
                                      queue_size = 2000, 
-                                     threads_per_node = 1)
+                                     threads_per_node = 1,
+                                     bundle_size = 100)
 
         #print_stream = scorings.map(lambda t: print(str(t)))
 

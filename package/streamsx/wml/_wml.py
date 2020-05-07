@@ -28,13 +28,14 @@ def wml_online_scoring( stream,
                         field_mapping,
                         credentials, 
                         space_guid, 
-                        expected_load = 1000, 
+                        expected_load = 0, 
                         queue_size = 2000,  
                         threads_per_node = 2,
                         single_output = False,
                         node_count = 1, 
                         connectionConfiguration=None, 
-                        name = None):
+                        name = None,
+                        bundle_size = 100):
     """
     Scoring tuples received from input :py:class:`stream` using the online scoring endpoint of WML referenced by the :py:class:`deployment_guid`.
     Mapping from input attributes to the models minning fields is done by the :py:class:`field_mapping` parameter.
@@ -55,10 +56,11 @@ def wml_online_scoring( stream,
         space_guid (str): 
             GUID of the used deployment space
         expected_load (int, optional): 
+            depricated, use new parameter bundle_size !
             The expected tuple throughput which is
             used to determine a maximum number of tuple to be sent in one request to 
             WML online scoring, maximum number = expected_load / threads_per_node
-            this value has most impact on throughput performance, defaults to 1000
+            this value has most impact on throughput performance, defaults to None
         queue_size (int, optional): 
             The internal buffer size after which back-pressure happens, defaults to 2000
         threads_per_node (int, optional): 
@@ -72,6 +74,9 @@ def wml_online_scoring( stream,
             optional field giving the number of REST nodes which share the load, defaults to 1
         name (str, optional): 
             Give the resulting Streams operator a name of your choice
+        bundle_size (int, optional): 
+            optional field for setting maximum number of tuple to be sent in one scoring request
+            this value has most impact on throughput performance, defaults to 100
         
     Returns:
         result_stream, error_stream(:py:class:`topology_ref:streamsx.topology.topology.Stream`, :py:class:`topology_ref:streamsx.topology.topology.Stream`):
@@ -105,9 +110,9 @@ def wml_online_scoring( stream,
             test_load=json.loads(field_mapping)
             field_mapping_json = field_mapping
         except:
-            print ("wml_online_scoring() parameter 'field_mapping' is not a valid json")    
+            raise Exception("wml_online_scoring() parameter 'field_mapping' is not a valid json")    
     else:
-        print ("wml_online_scoring() parameter 'field_mapping' has to be either a 'list' or a valid JSON string of mappings")
+        raise Exception("wml_online_scoring() parameter 'field_mapping' has to be either a 'list' or a valid JSON string of mappings")
     
 
     # credentials has to be either dict
@@ -119,11 +124,24 @@ def wml_online_scoring( stream,
             test_load=json.loads(credentials)
             credentials_json = credentials
         except:
-            print ("wml_online_scoring() parameter 'credentials' is not a valid json")
+            raise Exception("wml_online_scoring() parameter 'credentials' is not a valid json")
             
     else:
-        print ("wml_online_scoring() parameter 'credentials' has to be either a 'dict' or a valid JSON string of credentials")
+        raise Exception("wml_online_scoring() parameter 'credentials' has to be either a 'dict' or a valid JSON string of credentials")
 
+    # either expected_load(depricated) or bundle_size(defaults to 100) have to be set
+    # For backward compatibility!!!
+    #     if expected_load is set use this and not bundle_size
+    _bundle_size = 0
+    if expected_load is 0: 
+        if isinstance(bundle_size, int):
+            _bundle_size = bundle_size
+        else:
+            raise Exception("wml_online_scoring() parameter 'bundle_size' has to be an integer")
+    elif not isinstance(expected_load,int):
+        raise Exception("Depricated wml_online_scoring() parameter 'expected_load' has to be an integer, consider using the new parameter 'bundle_size'")
+    else:
+        print ("wml_online_scoring() parameter 'expected_load' is depricated but still supported, consider using the new parameter 'bundle_size'")
 
 
     # create instance of wrapper class
@@ -133,13 +151,14 @@ def wml_online_scoring( stream,
                             field_mapping = field_mapping_json,
                             credentials = credentials_json, 
                             space_guid = space_guid, 
-                            expected_load = expected_load, 
+                            expected_load = expected_load,
                             queue_size = queue_size,  
                             threads_per_node = threads_per_node,
                             single_output = single_output, 
                             node_count = node_count,
                             connectionConfiguration = connectionConfiguration, 
-                            name = name)
+                            name = name,
+                            bundle_size = _bundle_size)
 
     # calling SPL operators will result anytime in schema based output streams
     # these need to be mapped back to the Python object Stream we received
@@ -165,7 +184,8 @@ class _WMLOnlineScoring(streamsx.spl.op.Invoke):
                        single_output,
                        node_count, 
                        connectionConfiguration, 
-                       name):
+                       name,
+                       bundle_size):
 
         topology = stream.topology
         kind="com.ibm.streams.wml::WMLOnlineScoring"
@@ -182,6 +202,7 @@ class _WMLOnlineScoring(streamsx.spl.op.Invoke):
         params['threads_per_node'] = threads_per_node
         params['single_output'] = single_output
         params['node_count'] = node_count
+        params['bundle_size'] = bundle_size
 
         super(_WMLOnlineScoring, self).__init__(topology,kind,inputs,schemas,params,name)
 

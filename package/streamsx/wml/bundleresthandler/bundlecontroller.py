@@ -29,14 +29,15 @@ class BundleController():
     
     """
     def __init__(self, 
-                       expected_load = None, 
+                       expected_load = 0,    #depricated
                        queue_size = None, 
                        threads_per_node = None,
                        single_output = None,
                        node_count = None,
                        handler_class = None,
                        field_mapping = None,
-                       output_function = None
+                       output_function = None,
+                       bundle_size = None
                       ):
 
         tracer.debug("__init__ called")
@@ -49,7 +50,7 @@ class BundleController():
         self._threads_per_node = threads_per_node
         self._single_output = single_output
         self._node_count = node_count
-        self._max_request_size = 10 if expected_load is None else int(expected_load/self._threads_per_node/self._node_count)
+        self._max_request_size = bundle_size if expected_load is 0 else int(expected_load/self._threads_per_node/self._node_count)
         self._handler_class = handler_class
 
         

@@ -3,6 +3,15 @@
 # Copyright IBM Corp. 2019
 
 """
+Changes
++++++++
+
+v1.0.1:     
+- depricate: parameter expected_load, but will be supported for backward 
+             compatibility if new parameter bundle_size is not provided
+- new: parameter bundles_size determines the bundle size directly
+
+
 Overview
 ++++++++
 
@@ -70,16 +79,12 @@ set to predict the Iris species from size of the petal and sepal of an exemplar:
     
     #field mapping supports JSON string and Python dict
     field_mapping_dict =[{"model_field":"Sepal.Length",
-                          "is_mandatory":True,
                           "tuple_field":"sepal_length"},
                          {"model_field":"Sepal.Width",
-                          "is_mandatory":True,
                           "tuple_field":"sepal_width"},
                          {"model_field":"Petal.Length",
-                          "is_mandatory":True,
                           "tuple_field":"petal_length"},
                          {"model_field":"Petal.Width",
-                          "is_mandatory":True,
                           "tuple_field":"petal_width"}]
     
     #field mapping can be of type dict or a JSON string reflecting same content
@@ -114,7 +119,7 @@ set to predict the Iris species from size of the petal and sepal of an exemplar:
                                          field_mapping, 
                                          logged_in_users_wml_credentials, 
                                          'e34d2846-cc27-4e8a-80af-3d0f7021d0cb', #space_guid
-                                         expected_load = 10,
+                                         bundle_size = 10,
                                          queue_size = 1000, 
                                          threads_per_node = 1)
     
@@ -133,7 +138,7 @@ set to predict the Iris species from size of the petal and sepal of an exemplar:
 """
 
 
-__version__='1.0.0'
+__version__='1.0.1'
 
 __all__ = ['wml_online_scoring']
 from streamsx.wml._wml import wml_online_scoring

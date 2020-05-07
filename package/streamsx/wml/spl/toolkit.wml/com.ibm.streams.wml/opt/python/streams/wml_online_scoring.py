@@ -75,11 +75,12 @@ class WMLOnlineScoring(spl.PrimitiveOperator):
                        field_mapping,		
                        wml_credentials , 
                        space_guid, 
-                       expected_load, 
+                       expected_load,         # depricated
                        queue_size, 
                        threads_per_node,
                        single_output,
-                       node_count):
+                       node_count,
+                       bundle_size):
         """Instantiates a WMLOnlineScoring object at application runtime (Streams application runtime container).
         
         It creates a WML client connecting to WML service with provided credentials and
@@ -94,13 +95,14 @@ class WMLOnlineScoring(spl.PrimitiveOperator):
         # Configure the specific controller class to be used
         self._controller = WmlBundleController(
                         # controller base class arguments
-                        expected_load = expected_load, 
+                        expected_load = expected_load,      # depricated
                         queue_size = queue_size, 
                         threads_per_node = threads_per_node,
                         single_output = single_output,
                         node_count = node_count,
                         field_mapping = field_mapping,
                         output_function = output_class(self),
+                        bundle_size = bundle_size,
                         # wml specific controler argumnets
                         deployment_guid = deployment_guid, 
                         wml_credentials = wml_credentials, 
