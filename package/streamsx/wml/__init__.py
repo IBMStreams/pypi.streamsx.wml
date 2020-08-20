@@ -138,7 +138,7 @@ set to predict the Iris species from size of the petal and sepal of an exemplar:
 """
 
 
-__version__='1.0.1'
+__version__='1.0.2'
 
 __all__ = ['wml_online_scoring']
 from streamsx.wml._wml import wml_online_scoring
