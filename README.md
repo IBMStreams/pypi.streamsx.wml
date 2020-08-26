@@ -5,8 +5,9 @@ This package provides the online scoring functionality of Watson Machine Learnin
 
 Package is organized using standard packaging to upload to PyPi.
 
-The package is uploaded to PyPi in the standard way:
+The package is uploaded to PyPi in the standard way, but package must be prepared to `ant build` before uploading it:
 ```
+ant build
 cd package
 python setup.py sdist bdist_wheel upload -r pypi
 ```
@@ -50,6 +51,16 @@ When the documented sample must be changed, change it here:
 
 - ./package/streamsx/wml/\_\_init\_\_.py
 - ./package/DESC.txt
+
+
+## Prepare package for release
+
+This step must be done before package is uploaded to pypi.org:
+
+```
+ant build
+```
+
 
 ## Test
 
