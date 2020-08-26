@@ -127,3 +127,11 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+
+
+package/streamsx/wml/spl/toolkit.wml/com.ibm.streams.wml/com.ibm.streams.wml/
+package/streamsx/wml/spl/toolkit.wml/com.ibm.streams.wml/impl/
+package/streamsx/wml/spl/toolkit.wml/com.ibm.streams.wml/opt/python/streams/bundleresthandler/
+package/streamsx/wml/spl/toolkit.wml/com.ibm.streams.wml/toolkit.xml
+
