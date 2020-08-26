@@ -6,8 +6,11 @@
 Changes
 +++++++
 
+v1.0.3:  
+- documentation updates: links in description updated
+
 v1.0.1:     
-- depricate: parameter expected_load, but will be supported for backward 
+- deprecate: parameter expected_load, but will be supported for backward 
              compatibility if new parameter bundle_size is not provided
 - new: parameter bundles_size determines the bundle size directly
 
@@ -15,7 +18,7 @@ v1.0.1:
 Overview
 ++++++++
 
-Provides functions to use Watson Machine Learning (WML) online scoring in `topology based streaming applications <https://www.ibm.com/support/knowledgecenter/SSQNUZ_2.5.0/cpd/svc/streams/developing-intro.html>`_.
+Provides functions to use Watson Machine Learning (WML) online scoring in `topology based streaming applications <https://www.ibm.com/support/knowledgecenter/SSQNUZ_3.0.1/cpd/svc/streams/developing-intro.html>`_.
 All models which are supported by WML for online scoring can be used to score streaming data in a topology application.
 The models have to be created with tools provided by WML and Cloud Pak for Data. They need to be stored in WML repository 
 and published as an online deployment. 
@@ -37,7 +40,7 @@ Quick ref to use this package
    'deployment space'. In Jupyter notebook you need to assign the 'space id' to your created WML client.
    You can also assign a space to your project, which can now be used as 'deployment space' in the notebook.
    
-       `CPD 2.5.0: Create and store models <https://www.ibm.com/support/knowledgecenter/SSQNUZ_2.5.0/wsj/analyze-data/ml-notebook_local.html>`_
+       `CPD 3.0.1: Create and store models <https://www.ibm.com/support/knowledgecenter/SSQNUZ_3.0.1/wsj/analyze-data/ml-notebook_local.html>`_
    
 
 2. Create a WML online scoring deployment
@@ -47,17 +50,17 @@ Quick ref to use this package
    An WML online scoring deployment is a REST endpoint to which you send (https request) your input data and get scoring results
    back as response.
    
-       `CPD 2.5.0: Store and deploy models <https://www.ibm.com/support/knowledgecenter/SSQNUZ_2.5.0/wsj/wmls/wmls-deploy-python.html>`_
+       `CPD 3.0.1: Store and deploy models <https://www.ibm.com/support/knowledgecenter/SSQNUZ_3.0.1/wsj/wmls/wmls-deploy-python.html>`_
    
 
-3. Create the streamin application
+3. Create the streaming application
    Once the deployment is active you can create the streaming application using the streamsx Python package. 
    You can read data from several sources, transform them, do analytics and write them sinks. In this process you
    can integrate now the streamsx.wml.wml_online_scoring() function which provides the high performance approach of
-   WML online scoring. Which means that multiple input data are send within a single REST request to the scoring RSET
+   WML online scoring. Which means that multiple input data are send within a single REST request to the scoring REST
    endpoint. The maximum number of contained input data can be controlled by parameter.
    
-       `CPD 2.5.0: Analyze streaming data <https://www.ibm.com/support/knowledgecenter/SSQNUZ_2.5.0/cpd/svc/streams/developing-intro.html>`_
+       `CPD 3.0.1: Analyze streaming data <https://www.ibm.com/support/knowledgecenter/SSQNUZ_3.0.1/cpd/svc/streams/developing-intro.html>`_
 
 
 Sample
@@ -75,7 +78,7 @@ set to predict the Iris species from size of the petal and sepal of an exemplar:
     import streamsx.wml.utils as wml_utils
     
     streams_instance_name = 'streams'
-    cfg=icpd_util.get_service_instance_details(name=streams_instance_name)
+    cfg=icpd_util.get_service_instance_details(name=streams_instance_name, instance_type="streams")
     
     #field mapping supports JSON string and Python dict
     field_mapping_dict =[{"model_field":"Sepal.Length",
@@ -138,7 +141,7 @@ set to predict the Iris species from size of the petal and sepal of an exemplar:
 """
 
 
-__version__='1.0.2'
+__version__='1.0.3a0'
 
 __all__ = ['wml_online_scoring']
 from streamsx.wml._wml import wml_online_scoring
