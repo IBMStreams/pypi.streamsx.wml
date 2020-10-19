@@ -2,7 +2,7 @@
 # Licensed Materials - Property of IBM
 # Copyright IBM Corp. 2020
 
-from watson_machine_learning_client import WatsonMachineLearningAPIClient
+from ibm_watson_machine_learning import APIClient
 
 
 def get_wml_credentials(token=None,url=None,version="3.0.0"):
@@ -38,7 +38,7 @@ def get_wml_credentials(token=None,url=None,version="3.0.0"):
     #test client creation to fail already in notebook if there is something wrong
     #need object copy here as the function changes "instance_id" in the object and so it 
     #couldn't be used anymore afterwards
-    #wml_client = WatsonMachineLearningAPIClient(copy.copy(credentials))
+    #wml_client = APIClient(copy.copy(credentials))
     return credentials
     
 def get_project_space(credentials):
@@ -54,7 +54,7 @@ def get_project_space(credentials):
     """
     from project_lib import Project
         
-    wml_client = WatsonMachineLearningAPIClient(copy.copy(credentials))
+    wml_client = APIClient(copy.copy(credentials))
     spaces = wml_client.spaces.get_details()["resources"]
     project = Project.access()
     project_guid = project.get_metadata()["metadata"]["guid"]

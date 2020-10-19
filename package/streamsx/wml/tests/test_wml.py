@@ -16,7 +16,7 @@ from streamsx.wml.bundleresthandler.bundleresthandler import BundleRestHandler
 import threading
 import numpy
 
-from watson_machine_learning_client import WatsonMachineLearningAPIClient
+from ibm_watson_machine_learning import APIClient
 
 
 

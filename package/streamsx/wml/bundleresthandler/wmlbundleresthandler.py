@@ -1,10 +1,10 @@
 # coding=utf-8
 # Licensed Materials - Property of IBM
 # Copyright IBM Corp. 2020
-   
-   
-from watson_machine_learning_client import WatsonMachineLearningAPIClient
-from watson_machine_learning_client.wml_client_error import ApiRequestFailure
+
+
+from ibm_watson_machine_learning import APIClient
+from ibm_watson_machine_learning.wml_client_error import WMLClientError
 
 import logging
 import numpy   
@@ -173,12 +173,12 @@ class WmlBundleRestHandler(BundleRestHandler):
         try:
             if len(self._payload_list) > 0:
                 self._rest_response = self.wml_client.deployments.score(self.deployment_guid,meta_props={'input_data':self._payload_list})
-        except ApiRequestFailure as err:
+        except WMLClientError as err:
             """REST request returns 
             400 incase something with the value of 'input_data' is not correct
             404 if the deployment GUID doesn't exists as REST endpoint
                     
-            score() function throws in this case an wml_client_error.ApiRequestFailure exception
+            score() function throws in this case an wml_client_error.WMLClientError exception
             with two args: description [0] and the response [1]
             use response.status_code, response.json()["errors"][0]["code"], response.json()["errors"][0]["message"]
                    
