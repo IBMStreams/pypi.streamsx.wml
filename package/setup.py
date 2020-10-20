@@ -13,7 +13,7 @@ setup(
   url = 'https://github.com/IBMStreams/pypi.streamsx.wml',
   keywords = ['streams', 'ibmstreams', 'streaming', 'analytics', 'streaming-analytics', 'wml', 'streamsx' , 'topology'],
   classifiers = [
-    'Development Status :: 1 - Planning',
+    'Development Status :: 4 - Beta',
     'License :: OSI Approved :: Apache Software License',
     'Programming Language :: Python :: 3',
     'Programming Language :: Python :: 3.5',
