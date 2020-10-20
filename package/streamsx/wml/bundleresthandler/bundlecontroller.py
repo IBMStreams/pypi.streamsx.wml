@@ -5,7 +5,7 @@
 #*******************************************************************************
 #
 # WML specific imports
-from watson_machine_learning_client import WatsonMachineLearningAPIClient
+from ibm_watson_machine_learning import APIClient
 # REST handler specific imports
 from .bundleresthandler import BundleRestHandler
 # standard python imports

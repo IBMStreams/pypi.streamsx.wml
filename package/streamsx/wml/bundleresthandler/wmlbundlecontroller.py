@@ -9,7 +9,7 @@ from .wmlbundleresthandler import WmlBundleRestHandler
 from .bundlecontroller import BundleController
 
 # WML specific imports
-from watson_machine_learning_client import WatsonMachineLearningAPIClient
+from ibm_watson_machine_learning import APIClient
 
 # standard python imports
 import logging
@@ -73,7 +73,7 @@ class WmlBundleController(BundleController):
     
     def _create_wml_client(self):
         tracer.debug("Creating WML client")
-        wml_client = WatsonMachineLearningAPIClient(self._wml_credentials)
+        wml_client = APIClient(self._wml_credentials)
         # set space before using any client function
         wml_client.set.default_space(self._deployment_space)
         tracer.debug("WML client created")
